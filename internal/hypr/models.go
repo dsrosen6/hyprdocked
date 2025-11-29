@@ -1,4 +1,4 @@
-package hyprctl
+package hypr
 
 type Monitor struct {
 	ID               int64     `json:"id"`

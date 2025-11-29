@@ -1,5 +1,5 @@
-// Package hyprctl provides methods to run hyprctl commands.
-package hyprctl
+// Package hypr provides methods to run hyprctl commands.
+package hypr
 
 import (
 	"bytes"

@@ -1,4 +1,4 @@
-package hyprctl
+package hypr
 
 func (c *Client) ListMonitors() ([]Monitor, error) {
 	var m []Monitor

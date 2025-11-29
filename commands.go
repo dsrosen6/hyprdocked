@@ -1,8 +1,8 @@
 package main
 
-func (c *client) listMonitors() (map[string]Monitor, error) {
+func (h *hyprctlClient) listMonitors() (map[string]Monitor, error) {
 	var monitors []Monitor
-	if err := c.runCommandWithUnmarshal([]string{"monitors"}, &monitors); err != nil {
+	if err := h.runCommandWithUnmarshal([]string{"monitors"}, &monitors); err != nil {
 		return nil, err
 	}
 

@@ -6,8 +6,8 @@ import (
 	"github.com/charmbracelet/huh"
 )
 
-func pickMonitor(c *client) (*Monitor, error) {
-	monitors, err := c.listMonitors()
+func (h *hyprctlClient) pickMonitor() (*Monitor, error) {
+	monitors, err := h.listMonitors()
 	if err != nil {
 		return nil, fmt.Errorf("listing monitors: %w", err)
 	}

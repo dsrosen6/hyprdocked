@@ -21,7 +21,7 @@ type socketConn struct {
 	*net.UnixConn
 }
 
-func newConn() (*socketConn, error) {
+func newSocketConn() (*socketConn, error) {
 	runtime := os.Getenv(runtimeEnv)
 	sig := os.Getenv(sigEnv)
 	if runtime == "" || sig == "" {
@@ -42,16 +42,16 @@ func newConn() (*socketConn, error) {
 	return &socketConn{conn}, nil
 }
 
-func (c *socketConn) listen() error {
-	sc := bufio.NewScanner(c)
-	for sc.Scan() {
-		line := sc.Text()
+func (a *app) listen(sc *socketConn) error {
+	scn := bufio.NewScanner(sc)
+	for scn.Scan() {
+		line := scn.Text()
 		if err := handleLine(line); err != nil {
 			fmt.Printf("Error handline line %s: %v\n", line, err)
 		}
 	}
 
-	if err := sc.Err(); err != nil {
+	if err := scn.Err(); err != nil {
 		return fmt.Errorf("error scanning: %w", err)
 	}
 

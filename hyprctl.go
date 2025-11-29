@@ -14,26 +14,26 @@ const (
 	unknownReqOutput = "unknown request"
 )
 
-type client struct {
-	BinaryPath string
+type hyprctlClient struct {
+	binaryPath string
 }
 
 var errUnknownRequest = errors.New(unknownReqOutput)
 
-func newClient() (*client, error) {
+func newHctlClient() (*hyprctlClient, error) {
 	bp, err := exec.LookPath(binaryName)
 	if err != nil {
 		return nil, fmt.Errorf("finding full hyprctl binary path: %w", err)
 	}
 
-	return &client{
-		BinaryPath: bp,
+	return &hyprctlClient{
+		binaryPath: bp,
 	}, nil
 }
 
-func (c *client) runCommandWithUnmarshal(args []string, v any) error {
+func (h *hyprctlClient) runCommandWithUnmarshal(args []string, v any) error {
 	a := append([]string{"-j"}, args...)
-	out, err := c.runCommand(a)
+	out, err := h.runCommand(a)
 	if err != nil {
 		return err
 	}
@@ -45,8 +45,8 @@ func (c *client) runCommandWithUnmarshal(args []string, v any) error {
 	return nil
 }
 
-func (c *client) runCommand(args []string) ([]byte, error) {
-	cmd := exec.Command(c.BinaryPath, args...)
+func (h *hyprctlClient) runCommand(args []string) ([]byte, error) {
+	cmd := exec.Command(h.binaryPath, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

@@ -20,9 +20,11 @@ var defaultCfg = &config{
 }
 
 func readConfig(path string) (*config, error) {
+	cfg := &config{}
 	if _, err := os.Stat(path); err != nil {
 		slog.Info("no config file found; creating default")
-		if err := createDefaultFile(path); err != nil {
+		cfg = defaultCfg
+		if err := cfg.write(path); err != nil {
 			return nil, fmt.Errorf("creating default config file: %w", err)
 		}
 	}
@@ -32,7 +34,6 @@ func readConfig(path string) (*config, error) {
 		return nil, fmt.Errorf("reading config file: %w", err)
 	}
 
-	cfg := &config{}
 	if err := json.Unmarshal(file, cfg); err != nil {
 		return nil, fmt.Errorf("unmarshaling json: %w", err)
 	}
@@ -48,19 +49,19 @@ func (c *config) validate() error {
 	return nil
 }
 
-func createDefaultFile(path string) error {
+func (c *config) write(path string) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("checking and/or creating config directory: %w", err)
 	}
 
-	str, err := json.MarshalIndent(defaultCfg, "", "  ")
+	str, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshaling json: %w", err)
 	}
 
 	if err := os.WriteFile(path, str, 0o644); err != nil {
-		return fmt.Errorf("writing json to file: %w", err)
+		return fmt.Errorf("writing to file: %w", err)
 	}
 
 	return nil

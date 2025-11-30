@@ -7,14 +7,13 @@ import (
 
 // Monitor matches the output of 'hyprctl monitors', and is also used for config.
 type Monitor struct {
-	ID          int64   `json:"id,omitempty"`
-	Name        string  `json:"name,omitempty"`
-	Width       int64   `json:"width,omitempty"`
-	Height      int64   `json:"height,omitempty"`
-	RefreshRate float64 `json:"refreshRate,omitempty"`
-	X           int64   `json:"x,omitempty"`
-	Y           int64   `json:"y,omitempty"`
-	Scale       float64 `json:"scale,omitempty"`
+	Name        string  `json:"name"`
+	Width       int64   `json:"width"`
+	Height      int64   `json:"height"`
+	RefreshRate float64 `json:"refreshRate"`
+	X           int64   `json:"x"`
+	Y           int64   `json:"y"`
+	Scale       float64 `json:"scale"`
 }
 
 func (a *app) saveCurrentMonitors(laptopMtr string) error {
@@ -80,4 +79,30 @@ func (h *hyprctlClient) listMonitors() (map[string]Monitor, error) {
 	}
 
 	return mm, nil
+}
+
+func (h *hyprctlClient) enableMonitor(m Monitor) error {
+	args := []string{"keyword", "monitor", monitorToConfigString(m)}
+	if _, err := h.runCommand(args); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (h *hyprctlClient) disableMonitor(m Monitor) error {
+	args := []string{"keyword", "monitor", m.Name, "disable"}
+	if _, err := h.runCommand(args); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func monitorToConfigString(m Monitor) string {
+	res := fmt.Sprintf("%dx%d", m.Width, m.Height)
+	res = fmt.Sprintf("%s@%f", res, m.RefreshRate)
+	xy := fmt.Sprintf("%dx%d", m.X, m.Y)
+	scale := fmt.Sprintf("%f", m.Scale)
+	return fmt.Sprintf("%s,%s,%s,%s", m.Name, res, xy, scale)
 }

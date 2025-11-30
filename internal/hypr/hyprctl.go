@@ -1,4 +1,5 @@
-package main
+// Package hypr handles all Hyprland-related logic.
+package hypr
 
 import (
 	"bytes"
@@ -14,26 +15,24 @@ const (
 	unknownReqOutput = "unknown request"
 )
 
-type hyprctlClient struct {
+var ErrUnknownRequest = errors.New(unknownReqOutput)
+
+type HyprctlClient struct {
 	binaryPath string
 }
 
-var errUnknownRequest = errors.New(unknownReqOutput)
-
-func newHctlClient() (*hyprctlClient, error) {
+func NewHyprctlClient() (*HyprctlClient, error) {
 	bp, err := exec.LookPath(binaryName)
 	if err != nil {
 		return nil, fmt.Errorf("finding full hyprctl binary path: %w", err)
 	}
 
-	return &hyprctlClient{
-		binaryPath: bp,
-	}, nil
+	return &HyprctlClient{binaryPath: bp}, nil
 }
 
-func (h *hyprctlClient) runCommandWithUnmarshal(args []string, v any) error {
+func (h *HyprctlClient) RunCommandWithUnmarshal(args []string, v any) error {
 	a := append([]string{"-j"}, args...)
-	out, err := h.runCommand(a)
+	out, err := h.RunCommand(a)
 	if err != nil {
 		return err
 	}
@@ -45,7 +44,7 @@ func (h *hyprctlClient) runCommandWithUnmarshal(args []string, v any) error {
 	return nil
 }
 
-func (h *hyprctlClient) runCommand(args []string) ([]byte, error) {
+func (h *HyprctlClient) RunCommand(args []string) ([]byte, error) {
 	cmd := exec.Command(h.binaryPath, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -68,7 +67,7 @@ func checkForErr(out string) error {
 	out = strings.TrimSpace(out)
 	switch out {
 	case unknownReqOutput:
-		return errUnknownRequest
+		return ErrUnknownRequest
 	default:
 		return nil
 	}

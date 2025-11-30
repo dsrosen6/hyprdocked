@@ -1,4 +1,4 @@
-package main
+package hypr
 
 import (
 	"bufio"
@@ -8,27 +8,34 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const (
 	runtimeEnv = "XDG_RUNTIME_DIR"
 	sigEnv     = "HYPRLAND_INSTANCE_SIGNATURE"
+	sockName   = ".socket2.sock"
 )
 
 var ErrMissingEnvs = errors.New("missing hyprland envs")
 
-type socketConn struct {
+type SocketConn struct {
 	*net.UnixConn
 }
 
-func newSocketConn() (*socketConn, error) {
+type baseEvent struct {
+	name    string
+	payload string
+}
+
+func NewSocketConn() (*SocketConn, error) {
 	runtime := os.Getenv(runtimeEnv)
 	sig := os.Getenv(sigEnv)
 	if runtime == "" || sig == "" {
 		return nil, ErrMissingEnvs
 	}
 
-	sock := filepath.Join(runtime, "hypr", sig, ".socket2.sock")
+	sock := filepath.Join(runtime, "hypr", sig, sockName)
 	addr := &net.UnixAddr{
 		Name: sock,
 		Net:  "unix",
@@ -39,11 +46,11 @@ func newSocketConn() (*socketConn, error) {
 		return nil, fmt.Errorf("connecting to socket: %w", err)
 	}
 
-	return &socketConn{conn}, nil
+	return &SocketConn{conn}, nil
 }
 
-func (a *app) listen(sc *socketConn) error {
-	scn := bufio.NewScanner(sc)
+func (h *SocketConn) ListenForEvents() error {
+	scn := bufio.NewScanner(h)
 	for scn.Scan() {
 		line := scn.Text()
 		if err := handleLine(line); err != nil {
@@ -65,13 +72,13 @@ func handleLine(line string) error {
 	}
 	slog.Debug("event received", "name", event.name, "payload", event.payload)
 	switch event.name {
-	case "monitoraddedv2":
+	case "monitoraddedv1":
 		n, err := extractMonitorName(event.payload)
 		if err != nil {
 			logExtractErr(err)
 		}
 		slog.Debug("got monitor added event", "monitor_name", n)
-	case "monitorremovedv2":
+	case "monitorremovedv1":
 		n, err := extractMonitorName(event.payload)
 		if err != nil {
 			logExtractErr(err)
@@ -84,4 +91,25 @@ func handleLine(line string) error {
 
 func logExtractErr(err error) {
 	slog.Error("extracting monitor name from event", "error", err)
+}
+
+func extractMonitorName(payload string) (string, error) {
+	parts := strings.Split(payload, ",")
+	if len(parts) != 3 {
+		return "", fmt.Errorf("bad monitorv2 event: %q", payload)
+	}
+
+	return parts[1], nil
+}
+
+func parseBaseEvent(line string) (*baseEvent, error) {
+	parts := strings.SplitN(line, ">>", 2)
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid event: %q", line)
+	}
+
+	return &baseEvent{
+		name:    parts[0],
+		payload: parts[1],
+	}, nil
 }

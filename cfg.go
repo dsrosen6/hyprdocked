@@ -10,21 +10,25 @@ import (
 )
 
 type config struct {
+	path             string
 	LaptopMonitor    Monitor   `json:"laptop_monitor_name"`
 	ExternalMonitors []Monitor `json:"external_monitors"`
 }
 
-var defaultCfg = &config{
-	LaptopMonitor:    Monitor{},
-	ExternalMonitors: []Monitor{},
+func defaultCfg(path string) *config {
+	return &config{
+		path:             path,
+		LaptopMonitor:    Monitor{},
+		ExternalMonitors: []Monitor{},
+	}
 }
 
 func readConfig(path string) (*config, error) {
 	cfg := &config{}
 	if _, err := os.Stat(path); err != nil {
 		slog.Info("no config file found; creating default")
-		cfg = defaultCfg
-		if err := cfg.write(path); err != nil {
+		cfg = defaultCfg(path)
+		if err := cfg.write(); err != nil {
 			return nil, fmt.Errorf("creating default config file: %w", err)
 		}
 	}
@@ -38,6 +42,7 @@ func readConfig(path string) (*config, error) {
 		return nil, fmt.Errorf("unmarshaling json: %w", err)
 	}
 
+	cfg.path = path
 	return cfg, nil
 }
 
@@ -49,8 +54,8 @@ func (c *config) validate() error {
 	return nil
 }
 
-func (c *config) write(path string) error {
-	dir := filepath.Dir(path)
+func (c *config) write() error {
+	dir := filepath.Dir(c.path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("checking and/or creating config directory: %w", err)
 	}
@@ -60,7 +65,7 @@ func (c *config) write(path string) error {
 		return fmt.Errorf("marshaling json: %w", err)
 	}
 
-	if err := os.WriteFile(path, str, 0o644); err != nil {
+	if err := os.WriteFile(c.path, str, 0o644); err != nil {
 		return fmt.Errorf("writing to file: %w", err)
 	}
 

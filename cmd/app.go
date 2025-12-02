@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strings"
 
 	"github.com/dsrosen6/hyprlaptop/internal/app"
 	"github.com/dsrosen6/hyprlaptop/internal/config"
@@ -35,32 +34,30 @@ func Run() error {
 	}
 
 	a := app.NewApp(cfg, hc)
+	if err := handleCommands(a); err != nil {
+		return err
+	}
 
 	return nil
 }
 
 func handleCommands(a *app.App) error {
-	args := os.Args
-	if len(args) < 2 {
+	args := os.Args[1:]
+	if len(args) == 0 {
 		return errors.New("no subcommand provided")
 	}
 
-	switch args[1] {
+	switch args[0] {
 	case "save-monitors", "sm":
-		// do thing
-		return nil
+		return handleSaveMonitors(a, args)
 	case "listen":
-		// do thing
-		return nil
+		return handleListen(a)
 	default:
 		return errors.New("invalid command")
 	}
 }
 
 func handleSaveMonitors(a *app.App, args []string) error {
-}
-
-func (a *App) HandleSaveMonitors(args []string) error {
 	expectedArgs := 1
 	gotArgs := len(args) - 1
 	if gotArgs != expectedArgs {
@@ -75,8 +72,8 @@ func (a *App) HandleSaveMonitors(args []string) error {
 		return fmt.Errorf("setting laptop monitor: %w", err)
 	}
 
-	fmt.Printf("Laptop monitor '%s' saved to config.\n", a.config.LaptopMonitor.Name)
-	externals := a.config.ExternalMonitors
+	fmt.Printf("Laptop monitor '%s' saved to config.\n", a.Cfg.LaptopMonitor.Name)
+	externals := a.Cfg.ExternalMonitors
 	switch len(externals) {
 	case 0:
 		fmt.Println("No external monitors detected.")
@@ -90,7 +87,7 @@ func (a *App) HandleSaveMonitors(args []string) error {
 	return nil
 }
 
-func (a *App) HandleListen() error {
+func handleListen(a *app.App) error {
 	slog.Info("initializing socket connection")
 	sc, err := hypr.NewSocketConn()
 	if err != nil {
@@ -107,47 +104,6 @@ func (a *App) HandleListen() error {
 	slog.Info("listening for hyprland events")
 	if err := sc.ListenForEvents(); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func (a *App) SaveCurrentMonitors(laptop string) error {
-	monitors, err := a.hctl.ListMonitors()
-	if err != nil {
-		return fmt.Errorf("listing monitors: %w", err)
-	}
-
-	var lm *hypr.Monitor
-	if laptop == "" {
-		for _, m := range monitors {
-			if strings.Contains(m.Name, "eDP") {
-				lm = &m
-			}
-		}
-	} else {
-		l, ok := monitors[laptop]
-		if ok {
-			lm = &l
-		}
-	}
-
-	if lm == nil {
-		return fmt.Errorf("monitor '%s' not found", laptop)
-	}
-
-	externals := map[string]hypr.Monitor{}
-	for _, m := range monitors {
-		if m.Name != lm.Name {
-			externals[m.Name] = m
-		}
-	}
-
-	a.config.LaptopMonitor = *lm
-	a.config.ExternalMonitors = externals
-
-	if err := a.config.Write(); err != nil {
-		return fmt.Errorf("writing config: %w", err)
 	}
 
 	return nil

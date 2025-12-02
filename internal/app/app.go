@@ -2,16 +2,23 @@
 package app
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/dsrosen6/hyprlaptop/internal/config"
 	"github.com/dsrosen6/hyprlaptop/internal/hypr"
 )
 
 type App struct {
-	hctl *hypr.HyprctlClient
-	cfg  *config.Config
+	Hctl *hypr.HyprctlClient
+	Cfg  *config.Config
+}
+
+type MonitorsResult struct {
+	LaptopMonitor    hypr.Monitor            `json:"laptop_monitor_name"`
+	ExternalMonitors map[string]hypr.Monitor `json:"external_monitors"`
 }
 
 func NewApp(cfg *config.Config, hc *hypr.HyprctlClient) *App {
@@ -20,7 +27,48 @@ func NewApp(cfg *config.Config, hc *hypr.HyprctlClient) *App {
 	}
 
 	return &App{
-		hctl: hc,
-		cfg:  cfg,
+		Hctl: hc,
+		Cfg:  cfg,
 	}
+}
+
+func (a *App) SaveCurrentMonitors(laptop string) error {
+	monitors, err := a.Hctl.ListMonitors()
+	if err != nil {
+		return fmt.Errorf("listing monitors: %w", err)
+	}
+
+	var lm *hypr.Monitor
+	if laptop == "" {
+		for _, m := range monitors {
+			if strings.Contains(m.Name, "eDP") {
+				lm = &m
+			}
+		}
+	} else {
+		l, ok := monitors[laptop]
+		if ok {
+			lm = &l
+		}
+	}
+
+	if lm == nil {
+		return fmt.Errorf("monitor '%s' not found", laptop)
+	}
+
+	externals := map[string]hypr.Monitor{}
+	for _, m := range monitors {
+		if m.Name != lm.Name {
+			externals[m.Name] = m
+		}
+	}
+
+	a.Cfg.LaptopMonitor = *lm
+	a.Cfg.ExternalMonitors = externals
+
+	if err := a.Cfg.Write(); err != nil {
+		return fmt.Errorf("writing config: %w", err)
+	}
+
+	return nil
 }

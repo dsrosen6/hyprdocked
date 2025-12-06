@@ -1,4 +1,3 @@
-// Package cmd is the entry point for hyprlaptop
 package cmd
 
 import (
@@ -23,7 +22,7 @@ func Run() error {
 		return fmt.Errorf("parsing cli flags: %w", err)
 	}
 
-	cfg, err := config.ReadConfig(cfgFile)
+	cfg, err := config.InitConfig(cfgFile)
 	if err != nil {
 		return fmt.Errorf("reading config: %w", err)
 	}

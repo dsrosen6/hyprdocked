@@ -1,4 +1,3 @@
-// Package lid handles laptop lid detection.
 package lid
 
 import (
@@ -11,12 +10,12 @@ const (
 	lidStateFile = "/proc/acpi/button/lid/LID/state"
 )
 
-type State int
+type State string
 
 const (
-	StateUnknown State = iota
-	StateOpen
-	StateClosed
+	StateUnknown State = "Unknown"
+	StateOpen    State = "Open"
+	StateClosed  State = "Closed"
 )
 
 func GetState() (State, error) {
@@ -33,16 +32,5 @@ func GetState() (State, error) {
 		return StateClosed, nil
 	default:
 		return StateUnknown, nil
-	}
-}
-
-func (s State) string() string {
-	switch s {
-	case StateOpen:
-		return "open"
-	case StateClosed:
-		return "closed"
-	default:
-		return "unknown"
 	}
 }

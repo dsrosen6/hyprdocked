@@ -1,4 +1,3 @@
-// Package app handles application logic.
 package app
 
 import (
@@ -14,11 +13,6 @@ import (
 type App struct {
 	Hctl *hypr.HyprctlClient
 	Cfg  *config.Config
-}
-
-type MonitorsResult struct {
-	LaptopMonitor    hypr.Monitor            `json:"laptop_monitor_name"`
-	ExternalMonitors map[string]hypr.Monitor `json:"external_monitors"`
 }
 
 func NewApp(cfg *config.Config, hc *hypr.HyprctlClient) *App {

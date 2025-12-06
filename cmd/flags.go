@@ -14,10 +14,6 @@ const (
 
 var cfgFile string
 
-type options struct {
-	configFile string
-}
-
 func parseFlags() error {
 	flag.StringVar(&cfgFile, "c", "", "specify a config file")
 	flag.Parse()

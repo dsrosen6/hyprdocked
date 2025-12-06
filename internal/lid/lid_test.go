@@ -8,5 +8,5 @@ func TestGetLidState(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Logf("lid state: %s\n", state.string())
+	t.Logf("lid state: %s\n", state)
 }

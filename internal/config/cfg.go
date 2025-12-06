@@ -12,13 +12,32 @@ import (
 	"github.com/dsrosen6/hyprlaptop/internal/hypr"
 )
 
+const (
+	cfgDirName  = "hyprlaptop"
+	cfgFileName = "config.json"
+)
+
 type Config struct {
 	path             string
 	LaptopMonitor    hypr.Monitor            `json:"laptop_monitor_name"`
 	ExternalMonitors map[string]hypr.Monitor `json:"external_monitors"`
 }
 
-func DefaultCfg(path string) *Config {
+func InitConfig(path string) (*Config, error) {
+	uc, err := os.UserConfigDir()
+	if err != nil {
+		return nil, fmt.Errorf("getting user config directory path: %w", err)
+	}
+	defPath := filepath.Join(uc, cfgDirName, cfgFileName)
+
+	if path == "" {
+		path = defPath
+	}
+
+	return readConfig(path)
+}
+
+func defaultCfg(path string) *Config {
 	return &Config{
 		path:             path,
 		LaptopMonitor:    hypr.Monitor{},
@@ -26,11 +45,12 @@ func DefaultCfg(path string) *Config {
 	}
 }
 
-func ReadConfig(path string) (*Config, error) {
+func readConfig(path string) (*Config, error) {
 	cfg := &Config{}
 	if _, err := os.Stat(path); err != nil {
 		slog.Info("no config file found; creating default")
-		cfg = DefaultCfg(path)
+		cfg = defaultCfg(path)
+
 		if err := cfg.Write(); err != nil {
 			return nil, fmt.Errorf("creating default config file: %w", err)
 		}

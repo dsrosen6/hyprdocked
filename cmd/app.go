@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	saveMtrsCmd = flag.NewFlagSet("save-monitors", flag.ExitOnError)
-	mtrName     = saveMtrsCmd.String("laptop", "", "name of laptop monitor")
+	saveDiplaysCmd = flag.NewFlagSet("save-displays", flag.ExitOnError)
+	mtrName        = saveDiplaysCmd.String("laptop", "", "name of laptop display")
 )
 
 func Run() error {
@@ -47,8 +47,8 @@ func handleCommands(a *app.App) error {
 	}
 
 	switch args[0] {
-	case "save-monitors", "sm":
-		return handleSaveMonitors(a, args)
+	case "save-displays", "sd":
+		return handleSaveDisplays(a, args)
 	case "listen":
 		return handleListen(a)
 	default:
@@ -56,28 +56,28 @@ func handleCommands(a *app.App) error {
 	}
 }
 
-func handleSaveMonitors(a *app.App, args []string) error {
+func handleSaveDisplays(a *app.App, args []string) error {
 	expectedArgs := 1
 	gotArgs := len(args) - 1
 	if gotArgs != expectedArgs {
 		return fmt.Errorf("expected %d arguments, got %d", expectedArgs, gotArgs)
 	}
 
-	if err := saveMtrsCmd.Parse(args[1:]); err != nil {
+	if err := saveDiplaysCmd.Parse(args[1:]); err != nil {
 		return fmt.Errorf("parsing arguments: %w", err)
 	}
 
-	if err := a.SaveCurrentMonitors(*mtrName); err != nil {
-		return fmt.Errorf("setting laptop monitor: %w", err)
+	if err := a.SaveCurrentDisplays(*mtrName); err != nil {
+		return fmt.Errorf("setting laptop display: %w", err)
 	}
 
-	fmt.Printf("Laptop monitor '%s' saved to config.\n", a.Cfg.LaptopMonitor.Name)
-	externals := a.Cfg.ExternalMonitors
+	fmt.Printf("Laptop display '%s' saved to config.\n", a.Cfg.LaptopDisplay.Name)
+	externals := a.Cfg.ExternalDisplays
 	switch len(externals) {
 	case 0:
-		fmt.Println("No external monitors detected.")
+		fmt.Println("No external display detected.")
 	default:
-		fmt.Println("Saved external monitor(s):")
+		fmt.Println("Saved external display(s):")
 		for _, e := range externals {
 			fmt.Printf("	%s\n", e.Name)
 		}

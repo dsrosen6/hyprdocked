@@ -32,7 +32,7 @@ func (h *HyprctlClient) ListMonitors() (MonitorMap, error) {
 	return mm, nil
 }
 
-func (h *HyprctlClient) EnableMonitor(m Monitor) error {
+func (h *HyprctlClient) EnableOrUpdateMonitor(m Monitor) error {
 	args := []string{"keyword", "monitor", monitorToConfigString(m)}
 	if _, err := h.RunCommand(args); err != nil {
 		return err
@@ -42,7 +42,7 @@ func (h *HyprctlClient) EnableMonitor(m Monitor) error {
 }
 
 func (h *HyprctlClient) DisableMonitor(m Monitor) error {
-	args := []string{"keyword", "monitor", m.Name, "disable"}
+	args := []string{"keyword", "monitor", m.Name + ",", "disable"}
 	if _, err := h.RunCommand(args); err != nil {
 		return err
 	}

@@ -19,8 +19,8 @@ const (
 
 type Config struct {
 	path             string
-	LaptopMonitor    hypr.Monitor            `json:"laptop_monitor"`
-	ExternalMonitors map[string]hypr.Monitor `json:"external_monitors"`
+	LaptopDisplay    hypr.Monitor            `json:"laptop_display"`
+	ExternalDisplays map[string]hypr.Monitor `json:"external_displays"`
 }
 
 func InitConfig(path string) (*Config, error) {
@@ -40,8 +40,8 @@ func InitConfig(path string) (*Config, error) {
 func defaultCfg(path string) *Config {
 	return &Config{
 		path:             path,
-		LaptopMonitor:    hypr.Monitor{},
-		ExternalMonitors: map[string]hypr.Monitor{},
+		LaptopDisplay:    hypr.Monitor{},
+		ExternalDisplays: map[string]hypr.Monitor{},
 	}
 }
 
@@ -70,8 +70,8 @@ func readConfig(path string) (*Config, error) {
 }
 
 func (c *Config) Validate() error {
-	if c.LaptopMonitor.Name == "" {
-		return errors.New("laptop monitor name not set")
+	if c.LaptopDisplay.Name == "" {
+		return errors.New("laptop display name not set")
 	}
 
 	return nil

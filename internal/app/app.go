@@ -26,39 +26,39 @@ func NewApp(cfg *config.Config, hc *hypr.HyprctlClient) *App {
 	}
 }
 
-func (a *App) SaveCurrentMonitors(laptop string) error {
-	monitors, err := a.Hctl.ListMonitors()
+func (a *App) SaveCurrentDisplays(laptop string) error {
+	displays, err := a.Hctl.ListMonitors()
 	if err != nil {
-		return fmt.Errorf("listing monitors: %w", err)
+		return fmt.Errorf("listing displays via hyprctl: %w", err)
 	}
 
 	var lm *hypr.Monitor
 	if laptop == "" {
-		for _, m := range monitors {
+		for _, m := range displays {
 			if strings.Contains(m.Name, "eDP") {
 				lm = &m
 			}
 		}
 	} else {
-		l, ok := monitors[laptop]
+		l, ok := displays[laptop]
 		if ok {
 			lm = &l
 		}
 	}
 
 	if lm == nil {
-		return fmt.Errorf("monitor '%s' not found", laptop)
+		return fmt.Errorf("display '%s' not found", laptop)
 	}
 
 	externals := map[string]hypr.Monitor{}
-	for _, m := range monitors {
+	for _, m := range displays {
 		if m.Name != lm.Name {
 			externals[m.Name] = m
 		}
 	}
 
-	a.Cfg.LaptopMonitor = *lm
-	a.Cfg.ExternalMonitors = externals
+	a.Cfg.LaptopDisplay = *lm
+	a.Cfg.ExternalDisplays = externals
 
 	if err := a.Cfg.Write(); err != nil {
 		return fmt.Errorf("writing config: %w", err)

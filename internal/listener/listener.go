@@ -56,6 +56,12 @@ func (l *Listener) listenForEvents(ctx context.Context, events chan<- Event) err
 		}
 	}()
 
+	go func() {
+		if err := l.commandListener(ctx, events); err != nil {
+			errc <- fmt.Errorf("lid switch listener: %w", err)
+		}
+	}()
+
 	select {
 	case <-ctx.Done():
 		return ctx.Err()

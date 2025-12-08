@@ -31,10 +31,11 @@ func (a *App) Listen(ctx context.Context) error {
 
 			slog.Info("received event from listener", "type", ev.Type, "details", ev.Details)
 			switch ev.Type {
-			case listener.DisplayAddEvent, listener.DisplayRemoveEvent, listener.DisplayUnknownEvent:
+			case listener.DisplayAddEvent, listener.DisplayRemoveEvent, listener.DisplayUnknownEvent, listener.LidSwitchEvent:
 				if err := a.Run(); err != nil {
 					slog.Error("running display updater", "error", err)
 				}
+
 			case listener.ConfigUpdatedEvent:
 				// Update config values
 				err := a.Cfg.Reload(5)

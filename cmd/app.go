@@ -50,12 +50,14 @@ func Run() error {
 
 func handleCommands(ctx context.Context, args []string) error {
 	if len(args) == 0 {
-		return handleRunOnce()
+		return handleRefresh()
 	}
 
 	switch args[0] {
 	case "save-displays", "sd":
 		return handleSaveDisplays(args)
+	case "lid", "lid-switch":
+		return handleLidSwitch()
 	case "listen":
 		return handleListen(ctx)
 	default:
@@ -63,9 +65,9 @@ func handleCommands(ctx context.Context, args []string) error {
 	}
 }
 
-func handleRunOnce() error {
+func handleRefresh() error {
 	if err := a.Run(); err != nil {
-		return fmt.Errorf("running once: %w", err)
+		return fmt.Errorf("refreshing: %w", err)
 	}
 
 	return nil
@@ -96,6 +98,14 @@ func handleSaveDisplays(args []string) error {
 		for _, e := range externals {
 			fmt.Printf("	%s\n", e.Name)
 		}
+	}
+
+	return nil
+}
+
+func handleLidSwitch() error {
+	if err := app.SendLidCommand(); err != nil {
+		return fmt.Errorf("sending lid switch command: %w", err)
 	}
 
 	return nil

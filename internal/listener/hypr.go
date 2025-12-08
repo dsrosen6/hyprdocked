@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"reflect"
 	"strings"
 )
 
@@ -14,13 +15,13 @@ var monitorEvents = map[string]EventType{
 }
 
 func (l *Listener) ListenHyprctl(ctx context.Context, events chan<- Event) error {
+	var lastEvent Event
 	scn := bufio.NewScanner(l.hctlSocketConn)
 	for scn.Scan() {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-
 			line := scn.Text()
 
 			ev, err := parseDisplayEvent(line)
@@ -30,6 +31,11 @@ func (l *Listener) ListenHyprctl(ctx context.Context, events chan<- Event) error
 			}
 
 			if ev.Type == DisplayUnknownEvent {
+				continue
+			}
+
+			if reflect.DeepEqual(lastEvent, ev) {
+				slog.Debug("hyprctl listener: new event matches last event, no action needed")
 				continue
 			}
 

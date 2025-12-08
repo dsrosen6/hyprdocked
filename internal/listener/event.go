@@ -12,6 +12,5 @@ const (
 	DisplayRemoveEvent  EventType = "DISPLAY_REMOVED"
 	DisplayUnknownEvent EventType = "DISLAY_UNKNOWN_EVENT"
 	ConfigUpdatedEvent  EventType = "CONFIG_UPDATED"
-	LidSwitchOpenEvent  EventType = "LID_SWITCH_ON"
-	LidSwitchCloseEvent EventType = "LID_SWITCH_CLOSED"
+	LidSwitchEvent      EventType = "LID_SWITCH"
 )

@@ -14,6 +14,7 @@ import (
 )
 
 var (
+	a              *app.App
 	saveDiplaysCmd = flag.NewFlagSet("save-displays", flag.ExitOnError)
 	mtrName        = saveDiplaysCmd.String("laptop", "", "name of laptop display")
 )
@@ -34,31 +35,38 @@ func Run() error {
 		return fmt.Errorf("creating hyprctl client: %w", err)
 	}
 
-	a := app.NewApp(cfg, hc)
-	if err := handleCommands(ctx, a); err != nil {
+	a = app.NewApp(cfg, hc)
+	if err := handleCommands(ctx, os.Args[1:]); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func handleCommands(ctx context.Context, a *app.App) error {
-	args := os.Args[1:]
+func handleCommands(ctx context.Context, args []string) error {
 	if len(args) == 0 {
-		return errors.New("no subcommand provided")
+		return handleRunOnce()
 	}
 
 	switch args[0] {
 	case "save-displays", "sd":
-		return handleSaveDisplays(a, args)
+		return handleSaveDisplays(args)
 	case "listen":
-		return handleListen(ctx, a)
+		return handleListen(ctx)
 	default:
 		return errors.New("invalid command")
 	}
 }
 
-func handleSaveDisplays(a *app.App, args []string) error {
+func handleRunOnce() error {
+	if err := a.Run(); err != nil {
+		return fmt.Errorf("running once: %w", err)
+	}
+
+	return nil
+}
+
+func handleSaveDisplays(args []string) error {
 	expectedArgs := 1
 	gotArgs := len(args) - 1
 	if gotArgs != expectedArgs {
@@ -88,7 +96,7 @@ func handleSaveDisplays(a *app.App, args []string) error {
 	return nil
 }
 
-func handleListen(ctx context.Context, a *app.App) error {
+func handleListen(ctx context.Context) error {
 	slog.Info("initializing socket connection")
 	slog.Info("listening for hyprland events")
 	if err := a.Listen(ctx); err != nil {

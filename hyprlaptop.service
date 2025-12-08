@@ -1,0 +1,11 @@
+[Unit]
+Description=Hyprlaptop Listener
+After=graphical-session.target
+
+[Service]
+ExecStart=/home/danny/go/bin/hyprlaptop listen
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

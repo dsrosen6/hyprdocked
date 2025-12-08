@@ -5,29 +5,18 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/dsrosen6/hyprlaptop/internal/hypr"
+	"github.com/dsrosen6/hyprlaptop/internal/listener"
 )
 
 func (a *App) Listen(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	events := make(chan hypr.Event, 16)
+	events := make(chan listener.Event, 16)
 	errc := make(chan error, 1)
 
-	sock, err := hypr.NewSocketConn()
-	if err != nil {
-		return fmt.Errorf("initializing socket connection: %w", err)
-	}
-
-	defer func() {
-		if err := sock.Close(); err != nil {
-			slog.Error("closing socket connection", "error", err)
-		}
-	}()
-
 	go func() {
-		if err := sock.ListenForEvents(ctx, events); err != nil {
+		if err := listener.ListenForEvents(ctx, events); err != nil {
 			errc <- err
 			cancel()
 		}
@@ -39,9 +28,9 @@ func (a *App) Listen(ctx context.Context) error {
 			if !ok {
 				return nil // normal shutdown
 			}
-			slog.Info("received event from listener", "name", ev.Name, "payload", ev.Payload)
+			slog.Info("received event from listener", "type", ev.Type, "details", ev.Details)
 			if err := a.Run(); err != nil {
-				slog.Error("error running display updater: %w", err)
+				slog.Error("error running display updater", "error", err)
 			}
 
 		case err := <-errc:

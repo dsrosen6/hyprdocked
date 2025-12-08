@@ -36,12 +36,12 @@ func (a *App) Run() error {
 	}
 
 	s := o.statusShouldBe()
-	slog.Info(fmt.Sprintf("status should be: %s", s))
+	slog.Debug(fmt.Sprintf("status should be: %s", s))
 
 	payloads := a.createPayloads(o, s)
 	needUpdate := false
 	for _, p := range payloads {
-		slog.Info("display detected", logMonitorAttr(p))
+		slog.Debug("display detected", logDisplayAttr(p))
 		if p.update {
 			needUpdate = true
 		}
@@ -52,8 +52,8 @@ func (a *App) Run() error {
 		return nil
 	}
 
-	if err := a.updateMonitors(payloads); err != nil {
-		return fmt.Errorf("updating monitors: %w", err)
+	if err := a.updateDisplays(payloads); err != nil {
+		return fmt.Errorf("updating displays: %w", err)
 	}
 
 	return nil
@@ -62,20 +62,20 @@ func (a *App) Run() error {
 func (a *App) getOutputs() (*getOutputResult, error) {
 	current, err := a.Hctl.ListMonitors()
 	if err != nil {
-		return nil, fmt.Errorf("listing current monitors: %w", err)
+		return nil, fmt.Errorf("listing current displays: %w", err)
 	}
 
 	var names []string
 	for _, m := range current {
 		names = append(names, m.Name)
 	}
-	slog.Info("monitors detected", "names", strings.Join(names, ","))
+	slog.Info("displays detected", "names", strings.Join(names, ","))
 
 	ls, err := lid.GetState()
 	if err != nil {
 		return nil, fmt.Errorf("getting lid status: %w", err)
 	}
-	slog.Info(fmt.Sprintf("lid state: %s", ls))
+	slog.Debug(fmt.Sprintf("lid state: %s", ls))
 
 	return &getOutputResult{
 		laptopName: a.Cfg.LaptopDisplay.Name,
@@ -84,11 +84,11 @@ func (a *App) getOutputs() (*getOutputResult, error) {
 	}, nil
 }
 
-func (a *App) updateMonitors(monitors []displayPayload) error {
+func (a *App) updateDisplays(displays []displayPayload) error {
 	wg := new(sync.WaitGroup)
-	errc := make(chan error, len(monitors))
+	errc := make(chan error, len(displays))
 
-	for _, p := range monitors {
+	for _, p := range displays {
 		if !p.update {
 			continue
 		}
@@ -99,12 +99,12 @@ func (a *App) updateMonitors(monitors []displayPayload) error {
 			m := p.out
 			if p.enable {
 				if err := a.Hctl.EnableOrUpdateMonitor(m); err != nil {
-					errc <- fmt.Errorf("enabling or updating monitor %s: %w", m.Name, err)
+					errc <- fmt.Errorf("enabling or updating display %s: %w", m.Name, err)
 				}
 				slog.Info("display enabled", "name", m.Name)
 			} else {
 				if err := a.Hctl.DisableMonitor(m); err != nil {
-					errc <- fmt.Errorf("disabling monitor %s: %w", m.Name, err)
+					errc <- fmt.Errorf("disabling display %s: %w", m.Name, err)
 				}
 				slog.Info("display disabled", "name", m.Name)
 			}
@@ -123,7 +123,7 @@ func (a *App) updateMonitors(monitors []displayPayload) error {
 	}
 
 	if hasErr {
-		return errors.New("failed to update one or more external monitors; see logs")
+		return errors.New("failed to update one or more external display; see logs")
 	}
 
 	return nil
@@ -145,10 +145,10 @@ func (a *App) getDisplayFromConfig(m hypr.Monitor) (hypr.Monitor, bool) {
 	return hypr.Monitor{}, false
 }
 
-// statusShouldBe checks the state of monitors and lid status, and returns the status
+// statusShouldBe checks the state of displays and lid status, and returns the status
 // that hyprlaptop should be switched to (if it isn't already)
 func (o *getOutputResult) statusShouldBe() outputsStatus {
-	// check if laptop is the only monitor
+	// check if laptop is the only display
 	if _, ok := o.displays[o.laptopName]; ok && len(o.displays) == 1 {
 		return onlyLaptopStates(o.lidState)
 	}
@@ -182,7 +182,7 @@ func withExternalStates(ls lid.State) outputsStatus {
 	}
 }
 
-func logMonitorAttr(p displayPayload) slog.Attr {
+func logDisplayAttr(p displayPayload) slog.Attr {
 	return slog.Group(
 		p.out.Name,
 		slog.Bool("from_config", p.fromConfig),

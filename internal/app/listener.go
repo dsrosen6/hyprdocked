@@ -16,7 +16,7 @@ func (a *App) Listen(ctx context.Context) error {
 	errc := make(chan error, 1)
 
 	go func() {
-		if err := listener.ListenForEvents(ctx, a.Cfg.Path, events); err != nil {
+		if err := listener.ListenForEvents(ctx, a.Cfg.Path(), events); err != nil {
 			errc <- err
 			cancel()
 		}

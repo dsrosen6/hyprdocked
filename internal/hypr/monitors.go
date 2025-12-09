@@ -6,13 +6,13 @@ import (
 
 type (
 	Monitor struct {
-		Name        string  `json:"name"`
-		Width       int64   `json:"width"`
-		Height      int64   `json:"height"`
-		RefreshRate float64 `json:"refreshRate"`
-		X           int64   `json:"x"`
-		Y           int64   `json:"y"`
-		Scale       float64 `json:"scale"`
+		Name        string  `json:"name,omitempty"`
+		Width       int64   `json:"width,omitempty"`
+		Height      int64   `json:"height,omitempty"`
+		RefreshRate float64 `json:"refreshRate,omitempty"`
+		X           int64   `json:"x,omitempty"`
+		Y           int64   `json:"y,omitempty"`
+		Scale       float64 `json:"scale,omitempty"`
 	}
 
 	MonitorMap map[string]Monitor

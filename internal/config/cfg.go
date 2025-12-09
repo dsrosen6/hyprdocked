@@ -14,19 +14,19 @@ import (
 )
 
 const (
-	cfgDirName  = "hyprlaptop"
-	cfgFileName = "config.json"
+	cfgDirName  = "hypr"
+	cfgFileName = "hyprlaptop.json"
 )
 
 type Config struct {
-	Path             string
+	path             string
 	LaptopDisplay    hypr.Monitor            `json:"laptop_display"`
 	ExternalDisplays map[string]hypr.Monitor `json:"external_displays"`
 }
 
 func defaultCfg(path string) *Config {
 	return &Config{
-		Path:             path,
+		path:             path,
 		LaptopDisplay:    hypr.Monitor{},
 		ExternalDisplays: map[string]hypr.Monitor{},
 	}
@@ -54,8 +54,12 @@ func (c *Config) Validate() error {
 	return nil
 }
 
+func (c *Config) Path() string {
+	return c.path
+}
+
 func (c *Config) Reload(maxRetries int) error {
-	u, err := readConfigWithRetry(c.Path, maxRetries)
+	u, err := readConfigWithRetry(c.path, maxRetries)
 	if err != nil {
 		return fmt.Errorf("reading config: %w", err)
 	}
@@ -66,7 +70,7 @@ func (c *Config) Reload(maxRetries int) error {
 }
 
 func (c *Config) Write() error {
-	dir := filepath.Dir(c.Path)
+	dir := filepath.Dir(c.path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("checking and/or creating config directory: %w", err)
 	}
@@ -76,7 +80,7 @@ func (c *Config) Write() error {
 		return fmt.Errorf("marshaling json: %w", err)
 	}
 
-	if err := os.WriteFile(c.Path, str, 0o644); err != nil {
+	if err := os.WriteFile(c.path, str, 0o644); err != nil {
 		return fmt.Errorf("writing to file: %w", err)
 	}
 
@@ -110,7 +114,7 @@ func readConfig(path string, createDefault bool) (*Config, error) {
 		return nil, fmt.Errorf("unmarshaling json: %w", err)
 	}
 
-	cfg.Path = path
+	cfg.path = path
 	return cfg, nil
 }
 

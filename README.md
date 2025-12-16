@@ -61,7 +61,7 @@ Additionally, add the following to your `hypridle` config:
 
 ```conf
 general = {
-    after_sleep_cmd = hyprlaptop wake`
+    after_sleep_cmd = hyprlaptop wake
     # your other general items...
 }
 ```

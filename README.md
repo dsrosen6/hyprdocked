@@ -24,17 +24,37 @@ Lots of people have done this via a bash script that runs on lid open/close. I u
 
 ## Installation
 
-Grab a binary from the latest release, or:
-
 ##### From Source
 
 ```go
 go install github.com/dsrosen6/hyprlaptop@latest
 ```
 
-##### NixOS
+##### Nix Home Manager
 
-Coming soon!
+Add this to your flake inputs:
+
+```nix
+inputs = [
+    hyprlaptop.url = "github:dsrosen6/hyprlaptop";
+];
+```
+
+In your Home Manager imports:
+
+```nix
+imports = [
+    inputs.hyprlaptop.homeManagerModules.default
+];
+```
+
+Then, in your services in Home Manager:
+
+```nix
+services.hyprlaptop.enabe = true;
+```
+
+I'll be looking at getting actual declarative configuration added when I get a chance. In the meantime, just set up your config file normally.
 
 ## Setup
 

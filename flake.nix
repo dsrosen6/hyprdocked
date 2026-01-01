@@ -1,11 +1,15 @@
 {
   description = "Hyprlaptop";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-  inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.gomod2nix.url = "github:nix-community/gomod2nix";
-  inputs.gomod2nix.inputs.nixpkgs.follows = "nixpkgs";
-  inputs.gomod2nix.inputs.flake-utils.follows = "flake-utils";
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
+    gomod2nix = {
+      url = "github:nix-community/gomod2nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+    };
+  };
 
   outputs =
     {
@@ -31,7 +35,7 @@
 
             package = lib.mkOption {
               type = lib.types.package;
-              default = self.packages.${pkgs.system}.default;
+              inherit (self.packages.${pkgs.stdenv.hostPlatform.system}) default;
               description = "The hyprlaptop package to use";
             };
           };
@@ -65,8 +69,7 @@
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-
-        callPackage = pkgs.callPackage;
+        inherit (pkgs) callPackage;
         go-lint = pkgs.stdenvNoCC.mkDerivation {
           name = "go-lint";
           dontBuild = true;

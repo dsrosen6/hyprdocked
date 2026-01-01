@@ -143,8 +143,6 @@ func handleWake() error {
 // handleListen is the entry point to the listener; meant to be run as a systemd user unit
 // or as an exec-once in hyprland, depending on if you're using UWSM.
 func handleListen(ctx context.Context) error {
-	slog.Info("initializing socket connection")
-	slog.Info("listening for hyprland events")
 	if err := a.Listen(ctx); err != nil {
 		return err
 	}

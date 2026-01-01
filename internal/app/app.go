@@ -6,17 +6,25 @@ import (
 
 	"github.com/dsrosen6/hyprlaptop/internal/config"
 	"github.com/dsrosen6/hyprlaptop/internal/hypr"
+	"github.com/dsrosen6/hyprlaptop/internal/power"
 )
 
 type App struct {
-	Hctl *hypr.HyprctlClient
-	Cfg  *config.Config
+	Hctl  *hypr.HyprctlClient
+	Cfg   *config.Config
+	State *State
+}
+
+type State struct {
+	LidState   power.LidState
+	PowerState power.PowerState
 }
 
 func NewApp(cfg *config.Config, hc *hypr.HyprctlClient) *App {
 	return &App{
-		Hctl: hc,
-		Cfg:  cfg,
+		Hctl:  hc,
+		Cfg:   cfg,
+		State: &State{},
 	}
 }
 

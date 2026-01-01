@@ -15,4 +15,5 @@ const (
 	DisplayUnknownEvent EventType = "DISLAY_UNKNOWN_EVENT"
 	IdleWakeEvent       EventType = "IDLE_WAKE"
 	LidSwitchEvent      EventType = "LID_SWITCH"
+	PowerChangedEvent   EventType = "POWER_CHANGED"
 )

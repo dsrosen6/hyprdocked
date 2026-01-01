@@ -55,8 +55,6 @@ func (l *Listener) commandListener(ctx context.Context, events chan<- Event) err
 				msg := strings.TrimSpace(string(buf))
 
 				switch msg {
-				case string(LidSwitchEvent):
-					events <- Event{Type: LidSwitchEvent}
 				case string(IdleWakeEvent):
 					events <- Event{Type: IdleWakeEvent}
 				case string(DisplayUnknownEvent):

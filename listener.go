@@ -215,7 +215,7 @@ func (l *listener) listenLidEvents(ctx context.Context, events chan<- listenerEv
 
 	for lidEvent := range lidListener.events {
 		select {
-		case events <- listenerEvent{Type: lidSwitchEvent, Details: lidEvent.State.string()}:
+		case events <- listenerEvent{Type: lidSwitchEvent, Details: string(lidEvent.State)}:
 		case <-ctx.Done():
 			return ctx.Err()
 		}
@@ -235,7 +235,7 @@ func (l *listener) listenPowerEvents(ctx context.Context, events chan<- listener
 
 	for powerEvent := range powerListener.events {
 		select {
-		case events <- listenerEvent{Type: powerChangedEvent, Details: powerEvent.State.string()}:
+		case events <- listenerEvent{Type: powerChangedEvent, Details: string(powerEvent.State)}:
 		case <-ctx.Done():
 			return ctx.Err()
 		}

@@ -18,21 +18,27 @@ const (
 type (
 	config struct {
 		path     string
-		Monitors map[string]monitorConfig
-		Profiles []Profile `json:"profiles"`
+		Monitors monitorConfigMap `json:"monitors"`
+		Profiles []*profile       `json:"profiles"`
 	}
 
-	monitorConfig struct{}
+	monitorConfig struct {
+		Identifiers monitorIdentifiers `json:"identifiers"`
+		Presets     monitorPresetMap   `json:"presets"`
+	}
+
+	monitorConfigMap map[string]monitorConfig
+	monitorPresetMap map[string]monitorSettings
 )
 
 func defaultCfg(path string) *config {
 	return &config{
 		path:     path,
-		Profiles: []Profile{},
+		Profiles: []*profile{},
 	}
 }
 
-func InitConfig(path string) (*config, error) {
+func initConfig(path string) (*config, error) {
 	uc, err := os.UserConfigDir()
 	if err != nil {
 		return nil, fmt.Errorf("getting user config directory path: %w", err)
@@ -46,11 +52,7 @@ func InitConfig(path string) (*config, error) {
 	return readConfig(path, true)
 }
 
-func (c *config) Path() string {
-	return c.path
-}
-
-func (c *config) Reload(maxRetries int) error {
+func (c *config) reload(maxRetries int) error {
 	u, err := readConfigWithRetry(c.path, maxRetries)
 	if err != nil {
 		return fmt.Errorf("reading config: %w", err)
@@ -62,7 +64,7 @@ func (c *config) Reload(maxRetries int) error {
 	return nil
 }
 
-func (c *config) Write() error {
+func (c *config) write() error {
 	dir := filepath.Dir(c.path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("checking and/or creating config directory: %w", err)
@@ -93,7 +95,7 @@ func readConfig(path string, createDefault bool) (*config, error) {
 
 		slog.Info("no config file found; creating default", "path", path)
 		cfg = defaultCfg(path)
-		if err := cfg.Write(); err != nil {
+		if err := cfg.write(); err != nil {
 			return nil, fmt.Errorf("creating default config file: %w", err)
 		}
 	}

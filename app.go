@@ -9,25 +9,28 @@ import (
 	"github.com/godbus/dbus/v5"
 )
 
-type App struct {
-	Hctl     *hyprClient
-	Cfg      *config
-	Listener *listener
-	Profiles []Profile
-	State    *State
+type app struct {
+	hctl     *hyprClient
+	cfg      *config
+	listener *listener
+	monitors monitorConfigMap
+	profiles []*profile
+	state    *state
 }
 
-func newApp(cfg *config, hc *hyprClient, l *listener) *App {
-	return &App{
-		Hctl:     hc,
-		Cfg:      cfg,
-		Listener: l,
-		State:    &State{},
+func newApp(cfg *config, hc *hyprClient, l *listener) *app {
+	return &app{
+		hctl:     hc,
+		cfg:      cfg,
+		listener: l,
+		monitors: cfg.Monitors,
+		profiles: cfg.Profiles,
+		state:    &state{},
 	}
 }
 
-func Run() error {
-	cfg, err := InitConfig("")
+func run() error {
+	cfg, err := initConfig("")
 	if err != nil {
 		return fmt.Errorf("initializing config: %w", err)
 	}
@@ -72,16 +75,18 @@ func Run() error {
 	}
 
 	app := newApp(cfg, h, l)
-	return app.Listen(context.Background())
+	app.validateAllProfiles()
+
+	return app.listen(context.Background())
 }
 
-func (a *App) RunUpdater() error {
+func (a *app) RunUpdater() error {
 	return nil
 }
 
-// Listen starts hyprlaptop's listener, which handles hyprctl display add/remove events
+// listen starts hyprlaptop's listener, which handles hyprctl display add/remove events
 // and events from the hyprlaptop CLI.
-func (a *App) Listen(ctx context.Context) error {
+func (a *app) listen(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -89,7 +94,7 @@ func (a *App) Listen(ctx context.Context) error {
 	errc := make(chan error, 1)
 
 	go func() {
-		if err := a.Listener.listen(ctx, events); err != nil {
+		if err := a.listener.listen(ctx, events); err != nil {
 			errc <- err
 			cancel()
 		}
@@ -106,36 +111,38 @@ func (a *App) Listen(ctx context.Context) error {
 			switch ev.Type {
 			case displayInitialEvent, displayAddEvent,
 				displayRemoveEvent, displayUnknownEvent:
-				m, err := a.Hctl.listMonitors()
+				m, err := a.hctl.listMonitors()
 				if err != nil {
 					slog.Error("listing current monitors", "error", err)
 					continue
 				}
-				if !reflect.DeepEqual(a.State.Monitors, m) {
-					a.State.Monitors = m
-					slog.Info("monitors state updated", "state", a.State.Monitors)
+				if !reflect.DeepEqual(a.state.Monitors, m) {
+					a.state.Monitors = m
+					slog.Info("monitors state updated", "state", a.state.Monitors)
 				}
 
 			case lidSwitchEvent:
-				a.State.LidState = parseLidState(ev.Details)
-				slog.Info("lid state updated", "state", a.State.LidState.string())
+				a.state.LidState = parseLidState(ev.Details)
+				slog.Info("lid state updated", "state", a.state.LidState)
 
 			case powerChangedEvent:
-				a.State.PowerState = parsePowerState(ev.Details)
-				slog.Info("power state updated", "state", a.State.PowerState.string())
+				a.state.PowerState = parsePowerState(ev.Details)
+				slog.Info("power state updated", "state", a.state.PowerState)
 
 			case configUpdatedEvent:
 				// Update config values
-				err := a.Cfg.Reload(5)
+				err := a.cfg.reload(5)
 				if err != nil {
 					slog.Error("reloading config", "error", err)
 					continue
 				}
-				a.Profiles = a.Cfg.Profiles
-				slog.Info("profiles reloaded", "count", len(a.Profiles))
+				a.monitors = a.cfg.Monitors
+				a.profiles = a.cfg.Profiles
+				slog.Info("profiles reloaded", "count", len(a.profiles))
+				a.validateAllProfiles()
 			}
 
-			if !a.State.Ready() {
+			if !a.state.ready() {
 				continue
 			}
 

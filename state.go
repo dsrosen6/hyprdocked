@@ -5,13 +5,13 @@ import (
 	"strings"
 )
 
-type State struct {
+type state struct {
 	Monitors   monitorMap
 	LidState   lidState
 	PowerState powerState
 }
 
-func (s *State) Ready() bool {
+func (s *state) ready() bool {
 	if s == nil {
 		slog.Error("state ready check", "error", "state nil")
 		return false

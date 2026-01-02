@@ -29,36 +29,25 @@ type (
 		State lidState
 	}
 
-	powerState int
-	lidState   int
+	powerState string
+	lidState   string
 )
 
 const (
-	upowerOnBatProperty    = "OnBattery"
-	upowerDest             = "org.freedesktop.UPower"
-	upowerPath             = "/org/freedesktop/UPower"
-	upowerMatchIfc         = "org.freedesktop.DBus.Properties"
-	upowerMatchMbr         = "PropertiesChanged"
-	upowerMethod           = "org.freedesktop.DBus.Properties.Get"
-	upowerProperty         = "LidIsClosed"
-	powerStateUnknownStr   = "unknown"
-	powerStateOnBatteryStr = "battery"
-	powerStateOnACStr      = "ac"
-	lidStateUnknownStr     = "unknown"
-	lidStateOpenedStr      = "opened"
-	lidStateClosedStr      = "closed"
-)
+	upowerOnBatProperty = "OnBattery"
+	upowerDest          = "org.freedesktop.UPower"
+	upowerPath          = "/org/freedesktop/UPower"
+	upowerMatchIfc      = "org.freedesktop.DBus.Properties"
+	upowerMatchMbr      = "PropertiesChanged"
+	upowerMethod        = "org.freedesktop.DBus.Properties.Get"
+	upowerProperty      = "LidIsClosed"
 
-const (
-	lidStateUnknown lidState = iota
-	lidStateOpened
-	lidStateClosed
-)
-
-const (
-	powerStateUnknown powerState = iota
-	powerStateOnBattery
-	powerStateOnAC
+	lidStateUnknown     lidState   = "unknown"
+	lidStateOpened      lidState   = "opened"
+	lidStateClosed      lidState   = "closed"
+	powerStateUnknown   powerState = "unknown"
+	powerStateOnBattery powerState = "battery"
+	powerStateOnAC      powerState = "ac"
 )
 
 func newLidListener(conn *dbus.Conn) *lidListener {
@@ -289,45 +278,19 @@ func (p *powerListener) shouldHandleSignal(sig *dbus.Signal) bool {
 	return false
 }
 
-func (ls lidState) string() string {
-	switch ls {
-	case lidStateOpened:
-		return lidStateOpenedStr
-	case lidStateClosed:
-		return lidStateClosedStr
-	default:
-		return lidStateUnknownStr
-	}
-}
-
-func (ps powerState) string() string {
-	switch ps {
-	case powerStateOnAC:
-		return powerStateOnACStr
-	case powerStateOnBattery:
-		return powerStateOnBatteryStr
-	default:
-		return powerStateUnknownStr
-	}
-}
-
 func parseLidState(s string) lidState {
-	switch s {
-	case lidStateOpenedStr:
-		return lidStateOpened
-	case lidStateClosedStr:
-		return lidStateClosed
+	switch lidState(s) {
+	case lidStateOpened, lidStateClosed:
+		return lidState(s)
 	default:
 		return lidStateUnknown
 	}
 }
 
 func parsePowerState(s string) powerState {
-	switch s {
-	case powerStateOnACStr:
-		return powerStateOnAC
-	case powerStateOnBatteryStr:
-		return powerStateOnBattery
+	switch powerState(s) {
+	case powerStateOnBattery, powerStateOnAC:
+		return powerState(s)
 	default:
 		return powerStateUnknown
 	}

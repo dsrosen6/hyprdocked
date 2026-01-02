@@ -3,7 +3,7 @@ package main
 import "fmt"
 
 func main() {
-	if err := Run(); err != nil {
+	if err := run(); err != nil {
 		fmt.Println("Error:", err)
 	}
 }

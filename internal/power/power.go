@@ -25,13 +25,15 @@ type (
 const (
 	uPowerOnBatProperty = "OnBattery"
 
-	PowerStateUnknown PowerState = iota
-	PowerStateOnBattery
-	PowerStateOnAC
-
 	PowerStateUnknownStr   = "unknown"
 	PowerStateOnBatteryStr = "battery"
 	PowerStateOnACStr      = "ac"
+)
+
+const (
+	PowerStateUnknown PowerState = iota
+	PowerStateOnBattery
+	PowerStateOnAC
 )
 
 func NewPowerListener(conn *dbus.Conn) *PowerListener {
@@ -53,7 +55,18 @@ func (p *PowerListener) Run(ctx context.Context) error {
 		return err
 	}
 
-	lastState := PowerStateUnknown
+	initialState, err := p.GetCurrentState(ctx)
+	if err != nil {
+		return fmt.Errorf("getting initial lid state: %w", err)
+	}
+
+	select {
+	case p.events <- PowerEvent{State: initialState}:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	lastState := initialState
 
 	for {
 		select {

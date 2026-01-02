@@ -68,3 +68,7 @@ func (a *App) SaveCurrentDisplays(laptop string) error {
 
 	return nil
 }
+
+func (a *App) PowerStatesReady() bool {
+	return a.State != nil && a.State.LidState != power.LidStateUnknown && a.State.PowerState != power.PowerStateUnknown
+}

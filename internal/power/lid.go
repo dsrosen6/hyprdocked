@@ -30,13 +30,15 @@ const (
 	uPowerMethod   = "org.freedesktop.DBus.Properties.Get"
 	uPowerProperty = "LidIsClosed"
 
-	LidStateUnknown LidState = iota
-	LidStateOpened
-	LidStateClosed
-
 	LidStateUnknownStr = "unknown"
 	LidStateOpenedStr  = "opened"
 	LidStateClosedStr  = "closed"
+)
+
+const (
+	LidStateUnknown LidState = iota
+	LidStateOpened
+	LidStateClosed
 )
 
 func NewLidListener(conn *dbus.Conn) *LidListener {
@@ -58,7 +60,18 @@ func (l *LidListener) Run(ctx context.Context) error {
 		return err
 	}
 
-	lastState := LidStateUnknown
+	initialState, err := l.GetCurrentState(ctx)
+	if err != nil {
+		return fmt.Errorf("getting initial lid state: %w", err)
+	}
+
+	select {
+	case l.events <- LidEvent{State: initialState}:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	lastState := initialState
 
 	for {
 		select {

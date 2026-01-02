@@ -20,6 +20,8 @@ type (
 	outputsStatus string
 )
 
+var ErrStateNotReady = errors.New("power states not initialized")
+
 const (
 	statusUnknown outputsStatus = "UNKNOWN"
 	statusOLLC    outputsStatus = "ONLY_LAPTOP_LID_CLOSED"

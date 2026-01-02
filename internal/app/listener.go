@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/dsrosen6/hyprlaptop/internal/listener"
+	"github.com/dsrosen6/hyprlaptop/internal/power"
 )
 
 // Listen starts hyprlaptop's listener, which handles hyprctl display add/remove events
@@ -33,25 +34,30 @@ func (a *App) Listen(ctx context.Context) error {
 
 			slog.Info("received event from listener", "type", ev.Type, "details", ev.Details)
 			switch ev.Type {
-			// All of these do the same thing. They are separate events for logging and for potential
-			// logic if they need to do different things in the future.
-			case listener.DisplayAddEvent, listener.DisplayRemoveEvent, listener.LidSwitchEvent,
-				listener.IdleWakeEvent, listener.DisplayUnknownEvent:
-				if err := a.Run(); err != nil {
-					slog.Error("running display updater", "error", err)
-				}
+			case listener.LidSwitchEvent:
+				a.State.LidState = power.ParseLidState(ev.Details)
+				slog.Info("lid state updated", "state", a.State.LidState.String())
+
+			case listener.PowerChangedEvent:
+				a.State.PowerState = power.ParsePowerState(ev.Details)
+				slog.Info("power state updated", "state", a.State.PowerState.String())
 
 			case listener.ConfigUpdatedEvent:
 				// Update config values
 				err := a.Cfg.Reload(5)
 				if err != nil {
 					slog.Error("reloading config", "error", err)
-				} else {
-					// Run displayer updater in case changes are needed from new config values
-					if err := a.Run(); err != nil {
-						slog.Error("running display updater (config change)", "error", err)
-					}
+					continue
 				}
+			}
+
+			if !a.PowerStatesReady() {
+				slog.Debug("power states not ready; not running updater")
+				continue
+			}
+
+			if err := a.Run(); err != nil {
+				slog.Error("running updater", "error", err)
 			}
 
 		case err := <-errc:

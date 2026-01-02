@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	cfgDirName  = "hypr"
-	cfgFileName = "hyprlaptop.json"
+	cfgDirName  = "hyprlaptop"
+	cfgFileName = "config.json"
 )
 
 type (
@@ -23,16 +23,17 @@ type (
 	}
 
 	Profile struct {
+		Name       string                        `json:"name,omitempty"`
 		Monitors   map[string]MonitorIdentifiers `json:"monitors,omitempty"`
-		LidState   string                        `json:"lid_state,omitempty"`
-		PowerState string                        `json:"power_state,omitempty"`
+		LidState   *string                       `json:"lid,omitempty"`
+		PowerState *string                       `json:"power,omitempty"`
 	}
 
 	MonitorIdentifiers struct {
-		Name        string `json:"name,omitempty"`
-		Description string `json:"description,omitempty"`
-		Make        string `json:"make,omitempty"`
-		Model       string `json:"model,omitempty"`
+		Name        *string `json:"name,omitempty"`
+		Description *string `json:"description,omitempty"`
+		Make        *string `json:"make,omitempty"`
+		Model       *string `json:"model,omitempty"`
 	}
 )
 

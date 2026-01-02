@@ -47,6 +47,8 @@ func Run() error {
 	}
 
 	a = app.NewApp(cfg, hc)
+	a.LogProfiles()
+
 	if err := handleCommands(ctx, os.Args[1:]); err != nil {
 		return err
 	}

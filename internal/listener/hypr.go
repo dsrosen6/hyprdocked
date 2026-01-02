@@ -17,8 +17,16 @@ var monitorEvents = map[string]EventType{
 	"monitorremovedv2": DisplayRemoveEvent,
 }
 
-// ListenHyprctl listens for hyprctl events and sends an event if it is a monitor add or removal.
-func (l *Listener) ListenHyprctl(ctx context.Context, events chan<- Event) error {
+// listenHyprctl listens for hyprctl events and sends an event if it is a monitor add or removal.
+func (l *Listener) listenHyprctl(ctx context.Context, events chan<- Event) error {
+	// emit initial event so app queries monitors
+	select {
+	case events <- Event{Type: DisplayInitialEvent}:
+		slog.Info("sent initial display event")
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
 	var lastEvent Event
 	scn := bufio.NewScanner(l.hctlSocketConn)
 	for scn.Scan() {

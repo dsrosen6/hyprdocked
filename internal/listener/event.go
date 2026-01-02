@@ -10,6 +10,7 @@ type EventType string
 
 const (
 	ConfigUpdatedEvent  EventType = "CONFIG_UPDATED"
+	DisplayInitialEvent EventType = "DISPLAY_INITIAL"
 	DisplayAddEvent     EventType = "DISPLAY_ADDED"
 	DisplayRemoveEvent  EventType = "DISPLAY_REMOVED"
 	DisplayUnknownEvent EventType = "DISLAY_UNKNOWN_EVENT"

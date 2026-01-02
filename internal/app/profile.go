@@ -1,59 +1,42 @@
 package app
 
 import (
+	"fmt"
+	"log/slog"
+	"strings"
+
 	"github.com/dsrosen6/hyprlaptop/internal/config"
-	"github.com/dsrosen6/hyprlaptop/internal/hypr"
 	"github.com/dsrosen6/hyprlaptop/internal/power"
 )
 
-type (
-	Profile struct {
-		Monitors   map[string]MonitorIdentifiers `json:"monitors,omitempty"`
-		LidState   *power.LidState
-		PowerState *power.PowerState
-	}
-
-	MonitorIdentifiers struct {
-		Name        *string `json:"name,omitempty"`
-		Description *string `json:"description,omitempty"`
-		Make        *string `json:"make,omitempty"`
-		Model       *string `json:"model,omitempty"`
-	}
-)
-
-func (p Profile) MatchesState(s *State) bool {
+type Profile struct {
+	Name       string
+	Monitors   map[string]MonitorIdentifiers
+	LidState   *power.LidState
+	PowerState *power.PowerState
 }
 
-func monitorsMatch(p MonitorIdentifiers, s hypr.Monitor) bool {
-	if p.Name != nil {
-		if *p.Name != s.Name {
-			return false
-		}
+func (a *App) LogProfiles() {
+	for _, p := range a.Profiles {
+		slog.Info("profile loaded", "details", p.logString())
 	}
-
-	if p.Description != nil {
-		if *p.Description != s.Description {
-			return false
-		}
-	}
-
-	if p.Make != nil {
-		if *p.Make != s.Make {
-			return false
-		}
-	}
-
-	if p.Model != nil {
-		if *p.Model != s.Model {
-			return false
-		}
-	}
-
-	return true
 }
 
-func cfgProfileToProfile(cfp config.Profile) Profile {
+func profilesFromConfig(cfp []config.Profile) []Profile {
+	profiles := make([]Profile, 0, len(cfp))
+	for _, p := range cfp {
+		profiles = append(profiles, profileFromConfig(p))
+	}
+
+	return profiles
+}
+
+func profileFromConfig(cfp config.Profile) Profile {
 	p := &Profile{}
+
+	if cfp.Name != "" {
+		p.Name = cfp.Name
+	}
 
 	if cfp.Monitors != nil {
 		p.Monitors = make(map[string]MonitorIdentifiers, len(cfp.Monitors))
@@ -62,15 +45,15 @@ func cfgProfileToProfile(cfp config.Profile) Profile {
 		}
 	}
 
-	if cfp.LidState != "" {
-		ls := power.ParseLidState(cfp.LidState)
+	if cfp.LidState != nil {
+		ls := power.ParseLidState(*cfp.LidState)
 		if ls != power.LidStateUnknown {
 			p.LidState = &ls
 		}
 	}
 
-	if cfp.PowerState != "" {
-		ps := power.ParsePowerState(cfp.PowerState)
+	if cfp.PowerState != nil {
+		ps := power.ParsePowerState(*cfp.PowerState)
 		if ps != power.PowerStateUnknown {
 			p.PowerState = &ps
 		}
@@ -79,18 +62,26 @@ func cfgProfileToProfile(cfp config.Profile) Profile {
 	return *p
 }
 
-func monitorFromConfig(cm config.MonitorIdentifiers) MonitorIdentifiers {
-	return MonitorIdentifiers{
-		Name:        strToPtr(cm.Name),
-		Description: strToPtr(cm.Description),
-		Make:        strToPtr(cm.Make),
-		Model:       strToPtr(cm.Model),
+func (p Profile) logString() string {
+	var elements []string
+	if p.Name != "" {
+		elements = append(elements, fmt.Sprintf("name:%s", p.Name))
 	}
-}
 
-func strToPtr(s string) *string {
-	if s != "" {
-		return &s
+	for k, v := range p.Monitors {
+		s := fmt.Sprintf("monitor:{%s}", v.logString(k))
+		elements = append(elements, s)
 	}
-	return nil
+
+	if p.LidState != nil {
+		ls := p.LidState.String()
+		elements = append(elements, fmt.Sprintf("lid:%s", ls))
+	}
+
+	if p.PowerState != nil {
+		ps := p.PowerState.String()
+		elements = append(elements, fmt.Sprintf("power:%s", ps))
+	}
+
+	return strings.Join(elements, ",")
 }

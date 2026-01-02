@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"reflect"
 
 	"github.com/dsrosen6/hyprlaptop/internal/listener"
 	"github.com/dsrosen6/hyprlaptop/internal/power"
@@ -34,6 +35,18 @@ func (a *App) Listen(ctx context.Context) error {
 
 			slog.Info("received event from listener", "type", ev.Type, "details", ev.Details)
 			switch ev.Type {
+			case listener.DisplayInitialEvent, listener.DisplayAddEvent,
+				listener.DisplayRemoveEvent, listener.DisplayUnknownEvent:
+				m, err := a.Hctl.ListMonitors()
+				if err != nil {
+					slog.Error("listing current monitors", "error", err)
+					continue
+				}
+				if !reflect.DeepEqual(a.State.Monitors, m) {
+					a.State.Monitors = m
+					slog.Info("monitors state updated", "state", a.State.Monitors)
+				}
+
 			case listener.LidSwitchEvent:
 				a.State.LidState = power.ParseLidState(ev.Details)
 				slog.Info("lid state updated", "state", a.State.LidState.String())
@@ -49,10 +62,11 @@ func (a *App) Listen(ctx context.Context) error {
 					slog.Error("reloading config", "error", err)
 					continue
 				}
+				a.Profiles = profilesFromConfig(a.Cfg.Profiles)
+				slog.Info("profiles reloaded", "count", len(a.Profiles))
 			}
 
-			if !a.PowerStatesReady() {
-				slog.Debug("power states not ready; not running updater")
+			if !a.State.Ready() {
 				continue
 			}
 

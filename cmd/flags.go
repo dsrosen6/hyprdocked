@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	defaultDir  = "hypr"
-	defaultFile = "hyprlaptop.json"
+	defaultDir  = "hyprlaptop"
+	defaultFile = "config.json"
 )
 
 var cfgFile string

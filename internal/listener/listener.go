@@ -58,7 +58,7 @@ func (l *Listener) listenForEvents(ctx context.Context, events chan<- Event) err
 
 	go func() {
 		slog.Info("listening for hyprland events")
-		if err := l.ListenHyprctl(ctx, events); err != nil {
+		if err := l.listenHyprctl(ctx, events); err != nil {
 			errc <- fmt.Errorf("hyprland listener: %w", err)
 		}
 	}()

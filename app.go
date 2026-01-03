@@ -150,12 +150,76 @@ func (a *app) listen(ctx context.Context) error {
 }
 
 func (a *app) update() error {
-	matched := a.getMatchingProfile()
+	lookup := a.newLabelLookup()
+	matched := a.getMatchingProfile(lookup)
 	if matched == nil {
 		slog.Info("no match found")
 		return nil
 	}
 	slog.Info("found profile match", "profile", matched.Name)
 
+	params := a.updateParamsFromProfile(matched, lookup)
+	for _, u := range params.enable {
+		slog.Info("will update monitor", "name", u.Name, "desc", u.Description, "make", u.Make, "model", u.Model)
+	}
+
+	for _, d := range params.disable {
+		slog.Info("will disable monitor", "name", d.Name, "desc", d.Description, "make", d.Make, "model", d.Model)
+	}
 	return nil
+}
+
+func (a *app) updateParamsFromProfile(p *profile, lookup labelLookup) *monitorUpdateParams {
+	var toUpdate, toDisable []monitor
+	seenNames := make(map[string]bool)
+
+	for _, s := range p.MonitorStates {
+		lm, ok := lookup[s.Label]
+		if !ok {
+			// only warn if not disabled; if it's marked disabled but missing,
+			// mission is already accomplished
+			if !s.Disabled {
+				slog.Warn("update param builder: no monitor found for label", "label", s.Label)
+				continue
+			}
+			slog.Debug("update param builder: no monitor found for label, but marked for disable, no action needed", "label", s.Label)
+			continue
+		}
+
+		seenNames[lm.Monitor.Name] = true
+
+		if s.Disabled {
+			toDisable = append(toDisable, lm.Monitor)
+			continue
+		}
+
+		if s.Preset == nil {
+			// no preset provided, just assume it stays the same
+			toUpdate = append(toUpdate, lm.Monitor)
+			continue
+		}
+
+		pr, ok := a.cfg.Monitors[s.Label].Presets[*s.Preset]
+		if !ok {
+			slog.Warn("update param builder: provided preset doesn't exist", "preset", s.Preset)
+			continue
+		}
+
+		m := monitor{
+			monitorIdentifiers: lm.Monitor.monitorIdentifiers,
+			monitorSettings:    pr,
+		}
+
+		toUpdate = append(toUpdate, m)
+	}
+
+	if p.DisableUndeclared {
+		for _, m := range a.currentState.Monitors {
+			if !seenNames[m.Name] {
+				toDisable = append(toDisable, m)
+			}
+		}
+	}
+
+	return newMonitorUpdateParams(toUpdate, toDisable)
 }

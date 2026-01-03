@@ -10,10 +10,7 @@ type labeledMonitor struct {
 
 // labelLookup is a helper struct which assists in the lookup of labeled monitors, and
 // confirmation that a legitimate monitor exists for a given label.
-type labelLookup struct {
-	monitors []labeledMonitor
-	confirm  map[string]bool
-}
+type labelLookup map[string]labeledMonitor
 
 // newLabelLookup creates a labelLookup with the user's config monitors and current app state monitors,
 // which were fetched from Hyprland.
@@ -23,35 +20,22 @@ func (a *app) newLabelLookup() labelLookup {
 
 // newLabelLookup creates a labelLookup from the user's config and the monitors fetched from Hyprland.
 func newLabelLookup(cfgMtrs monitorConfigMap, hyprMtrs []monitor) labelLookup {
-	lm := matchMonitorsToLabels(cfgMtrs, hyprMtrs)
-	confirm := make(map[string]bool, len(lm))
-	for _, l := range lm {
-		confirm[l.Label] = true
-	}
-
-	return labelLookup{
-		monitors: lm,
-		confirm:  confirm,
-	}
-}
-
-// matchMonitorsToLabels cycles through each declared monitor in the config and matches them to a
-// monitor fetched from Hyprland.
-func matchMonitorsToLabels(cfgMtrs monitorConfigMap, hyprMtrs []monitor) []labeledMonitor {
-	var labeled []labeledMonitor
+	lookup := make(labelLookup)
 	for label, cfg := range cfgMtrs {
 		for _, hm := range hyprMtrs {
 			if matchesIdentifiers(hm, cfg.Identifiers) {
-				labeled = append(labeled, labeledMonitor{
+				m := labeledMonitor{
 					Label:   label,
 					Monitor: hm,
-				})
+				}
+
+				lookup[label] = m
 				break
 			}
 		}
 	}
 
-	return labeled
+	return lookup
 }
 
 // matchesIdentifiers verifies if a user-provided set of monitor identifiers has a match

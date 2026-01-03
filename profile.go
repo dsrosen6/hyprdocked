@@ -26,8 +26,7 @@ type (
 	}
 )
 
-func (a *app) getMatchingProfile() *profile {
-	lookup := a.newLabelLookup()
+func (a *app) getMatchingProfile(lookup labelLookup) *profile {
 	var matched *profile
 	for _, p := range a.cfg.Profiles {
 		if a.profileMatchesState(p, lookup) {
@@ -56,7 +55,7 @@ func (a *app) profileMatchesState(p *profile, lookup labelLookup) bool {
 	}
 
 	for _, requiredLabel := range p.Conditions.EnabledMonitors {
-		if !lookup.confirm[requiredLabel] {
+		if _, ok := lookup[requiredLabel]; !ok {
 			return false
 		}
 	}

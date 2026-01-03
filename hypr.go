@@ -51,6 +51,11 @@ type (
 		Scale       float64 `json:"scale,omitempty"`
 	}
 
+	monitorUpdateParams struct {
+		enable  []monitor
+		disable []monitor
+	}
+
 	hyprSocketConn struct {
 		*net.UnixConn
 	}
@@ -84,6 +89,21 @@ func newHyprSocketConn() (*hyprSocketConn, error) {
 	}
 
 	return &hyprSocketConn{conn}, nil
+}
+
+func newMonitorUpdateParams(enable, disable []monitor) *monitorUpdateParams {
+	if enable == nil {
+		enable = []monitor{}
+	}
+
+	if disable == nil {
+		disable = []monitor{}
+	}
+
+	return &monitorUpdateParams{
+		enable:  enable,
+		disable: disable,
+	}
 }
 
 func (h *hyprClient) runCommandWithUnmarshal(args []string, v any) error {
@@ -144,6 +164,14 @@ func (h *hyprClient) disableMonitor(m monitor) error {
 	}
 
 	return nil
+}
+
+func (p *monitorUpdateParams) addMonitorToEnable(m monitor) {
+	p.enable = append(p.enable, m)
+}
+
+func (p *monitorUpdateParams) addMonitorToDisable(m monitor) {
+	p.disable = append(p.disable, m)
 }
 
 func monitorToConfigString(m monitor) string {

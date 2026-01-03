@@ -5,10 +5,28 @@ type labeledMonitor struct {
 	Monitor monitor
 }
 
-func (a *app) matchMonitorsToLabels() []labeledMonitor {
+type labelLookup struct {
+	monitors []labeledMonitor
+	confirm  map[string]bool
+}
+
+func newLabelLookup(cfgMtrs monitorConfigMap, hyprMtrs []monitor) labelLookup {
+	lm := matchMonitorsToLabels(cfgMtrs, hyprMtrs)
+	confirm := make(map[string]bool, len(lm))
+	for _, l := range lm {
+		confirm[l.Label] = true
+	}
+
+	return labelLookup{
+		monitors: lm,
+		confirm:  confirm,
+	}
+}
+
+func matchMonitorsToLabels(cfgMtrs monitorConfigMap, hyprMtrs []monitor) []labeledMonitor {
 	var labeled []labeledMonitor
-	for label, cfg := range a.monitors {
-		for _, hm := range a.state.Monitors {
+	for label, cfg := range cfgMtrs {
+		for _, hm := range hyprMtrs {
 			if matchesIdentifiers(hm, cfg.Identifiers) {
 				labeled = append(labeled, labeledMonitor{
 					Label:   label,

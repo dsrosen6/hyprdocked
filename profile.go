@@ -27,15 +27,14 @@ type (
 )
 
 func (a *app) getMatchingProfile() *profile {
-	lm := a.matchMonitorsToLabels()
-	labels := make(map[string]bool)
-	for _, l := range lm {
-		labels[l.Label] = true
-	}
-
+	lookup := newLabelLookup(a.cfg.Monitors, a.currentState.Monitors)
 	var matched *profile
-	for _, p := range a.profiles {
-		if a.profileMatchesState(p, labels) {
+	for _, p := range a.cfg.Profiles {
+		if a.profileMatchesState(p, lookup) {
+			if !p.valid {
+				slog.Warn("conditions met for profile, but the profile is invalid; skipping", "profile", p.Name)
+				continue
+			}
 			matched = p
 		}
 	}
@@ -43,21 +42,21 @@ func (a *app) getMatchingProfile() *profile {
 	return matched
 }
 
-func (a *app) profileMatchesState(p *profile, labels map[string]bool) bool {
+func (a *app) profileMatchesState(p *profile, lookup labelLookup) bool {
 	if p.Conditions.LidState != nil {
-		if *p.Conditions.LidState != a.state.LidState {
+		if *p.Conditions.LidState != a.currentState.LidState {
 			return false
 		}
 	}
 
 	if p.Conditions.PowerState != nil {
-		if *p.Conditions.PowerState != a.state.PowerState {
+		if *p.Conditions.PowerState != a.currentState.PowerState {
 			return false
 		}
 	}
 
 	for _, requiredLabel := range p.Conditions.EnabledMonitors {
-		if !labels[requiredLabel] {
+		if !lookup.confirm[requiredLabel] {
 			return false
 		}
 	}
@@ -66,7 +65,7 @@ func (a *app) profileMatchesState(p *profile, labels map[string]bool) bool {
 }
 
 func (a *app) validateAllProfiles() {
-	for _, p := range a.profiles {
+	for _, p := range a.cfg.Profiles {
 		a.validateProfile(p)
 	}
 }
@@ -121,7 +120,7 @@ func (a *app) validateProfile(p *profile) {
 }
 
 func (a *app) validMonitorLabel(label string) bool {
-	return validMonitorLabel(a.monitors, label)
+	return validMonitorLabel(a.cfg.Monitors, label)
 }
 
 func (a *app) validMonitorPreset(monitor, preset string) bool {
@@ -129,7 +128,7 @@ func (a *app) validMonitorPreset(monitor, preset string) bool {
 		return false
 	}
 
-	return validMonitorPreset(a.monitors[monitor].Presets, preset)
+	return validMonitorPreset(a.cfg.Monitors[monitor].Presets, preset)
 }
 
 func validMonitorLabel(monitors monitorConfigMap, label string) bool {

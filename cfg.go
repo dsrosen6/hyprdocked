@@ -58,9 +58,20 @@ func (c *config) reload(maxRetries int) error {
 		return fmt.Errorf("reading config: %w", err)
 	}
 
-	if u.Profiles != nil {
-		c.Profiles = u.Profiles
+	m := make(monitorConfigMap)
+	p := []*profile{}
+
+	if u.Monitors != nil {
+		m = u.Monitors
 	}
+
+	if u.Profiles != nil {
+		p = u.Profiles
+	}
+
+	c.Monitors = m
+	c.Profiles = p
+
 	return nil
 }
 

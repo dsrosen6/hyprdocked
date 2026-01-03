@@ -6,9 +6,9 @@ import (
 )
 
 type state struct {
-	Monitors   []monitor
-	LidState   lidState
-	PowerState powerState
+	Monitors   []monitor  // current monitors, returned by hyprctl monitors
+	LidState   lidState   // current state of laptop lid
+	PowerState powerState // current power state (battery/ac)
 }
 
 func (s *state) ready() bool {

@@ -10,22 +10,18 @@ import (
 )
 
 type app struct {
-	hctl     *hyprClient
-	cfg      *config
-	listener *listener
-	monitors monitorConfigMap
-	profiles []*profile
-	state    *state
+	hctl         *hyprClient
+	cfg          *config
+	listener     *listener
+	currentState *state
 }
 
 func newApp(cfg *config, hc *hyprClient, l *listener) *app {
 	return &app{
-		hctl:     hc,
-		cfg:      cfg,
-		listener: l,
-		monitors: cfg.Monitors,
-		profiles: cfg.Profiles,
-		state:    &state{},
+		hctl:         hc,
+		cfg:          cfg,
+		listener:     l,
+		currentState: &state{},
 	}
 }
 
@@ -80,15 +76,6 @@ func run() error {
 	return app.listen(context.Background())
 }
 
-func (a *app) RunUpdater() {
-	matched := a.getMatchingProfile()
-	if matched == nil {
-		slog.Info("no match found")
-		return
-	}
-	slog.Info("found profile match", "profile", matched.Name)
-}
-
 // listen starts hyprlaptop's listener, which handles hyprctl display add/remove events
 // and events from the hyprlaptop CLI.
 func (a *app) listen(ctx context.Context) error {
@@ -121,18 +108,18 @@ func (a *app) listen(ctx context.Context) error {
 					slog.Error("listing current monitors", "error", err)
 					continue
 				}
-				if !reflect.DeepEqual(a.state.Monitors, m) {
-					a.state.Monitors = m
-					slog.Info("monitors state updated", "state", a.state.Monitors)
+				if !reflect.DeepEqual(a.currentState.Monitors, m) {
+					a.currentState.Monitors = m
+					slog.Info("monitors state updated", "state", a.currentState.Monitors)
 				}
 
 			case lidSwitchEvent:
-				a.state.LidState = parseLidState(ev.Details)
-				slog.Info("lid state updated", "state", a.state.LidState)
+				a.currentState.LidState = parseLidState(ev.Details)
+				slog.Info("lid state updated", "state", a.currentState.LidState)
 
 			case powerChangedEvent:
-				a.state.PowerState = parsePowerState(ev.Details)
-				slog.Info("power state updated", "state", a.state.PowerState)
+				a.currentState.PowerState = parsePowerState(ev.Details)
+				slog.Info("power state updated", "state", a.currentState.PowerState)
 
 			case configUpdatedEvent:
 				// Update config values
@@ -141,17 +128,18 @@ func (a *app) listen(ctx context.Context) error {
 					slog.Error("reloading config", "error", err)
 					continue
 				}
-				a.monitors = a.cfg.Monitors
-				a.profiles = a.cfg.Profiles
-				slog.Info("profiles reloaded", "count", len(a.profiles))
+				slog.Info("profiles reloaded", "count", len(a.cfg.Profiles))
 				a.validateAllProfiles()
 			}
 
-			if !a.state.ready() {
+			if !a.currentState.ready() {
 				continue
 			}
 
-			a.RunUpdater()
+			if err := a.update(); err != nil {
+				slog.Error("running updater", "error", err)
+			}
+
 		case err := <-errc:
 			return fmt.Errorf("listener failed: %w", err)
 
@@ -159,4 +147,15 @@ func (a *app) listen(ctx context.Context) error {
 			return ctx.Err()
 		}
 	}
+}
+
+func (a *app) update() error {
+	matched := a.getMatchingProfile()
+	if matched == nil {
+		slog.Info("no match found")
+		return nil
+	}
+	slog.Info("found profile match", "profile", matched.Name)
+
+	return nil
 }

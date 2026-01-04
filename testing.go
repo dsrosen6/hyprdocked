@@ -10,16 +10,16 @@ type (
 var (
 	// test state for detecting that laptop should become enabled
 	testStateExternalLidOpen = &state{
-		LidState:   lidStateOpened,
-		PowerState: powerStateOnAC,
-		Monitors:   []monitor{testMonitorExternal},
+		lidState:   lidStateOpened,
+		powerState: powerStateOnAC,
+		monitors:   []monitor{testMonitorExternal},
 	}
 
 	// test state for detecting that laptop should become disabled
 	testStateExternalLidClosed = &state{
-		LidState:   lidStateClosed,
-		PowerState: powerStateOnAC,
-		Monitors:   []monitor{testMonitorExternal, testMonitorLaptop},
+		lidState:   lidStateClosed,
+		powerState: powerStateOnAC,
+		monitors:   []monitor{testMonitorExternal, testMonitorLaptop},
 	}
 
 	testMonitorExternal = monitor{

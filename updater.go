@@ -86,7 +86,7 @@ func (a *app) updateParamsFromProfile(p *profile, lookup labelLookup) *monitorUp
 	}
 
 	if p.DisableUndeclared {
-		for _, m := range a.currentState.Monitors {
+		for _, m := range a.currentState.monitors {
 			if seenNames.contains(m.Name) {
 				toDisable = append(toDisable, m)
 			}

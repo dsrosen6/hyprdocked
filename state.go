@@ -6,9 +6,9 @@ import (
 )
 
 type state struct {
-	Monitors   []monitor  // current monitors, returned by hyprctl monitors
-	LidState   lidState   // current state of laptop lid
-	PowerState powerState // current power state (battery/ac)
+	lidState   lidState   // current state of laptop lid
+	powerState powerState // current power state (battery/ac)
+	monitors   []monitor  // current monitors, returned by hyprctl monitors
 }
 
 func (s *state) ready() bool {
@@ -18,15 +18,15 @@ func (s *state) ready() bool {
 	}
 
 	var notReady []string
-	if s.LidState == lidStateUnknown {
+	if s.lidState == lidStateUnknown {
 		notReady = append(notReady, "lid")
 	}
 
-	if s.PowerState == powerStateUnknown {
+	if s.powerState == powerStateUnknown {
 		notReady = append(notReady, "power")
 	}
 
-	if len(s.Monitors) == 0 {
+	if len(s.monitors) == 0 {
 		notReady = append(notReady, "monitors")
 	}
 

@@ -29,13 +29,13 @@ type (
 
 func (p *profile) matchesState(lookup labelLookup, state *state) bool {
 	if p.Conditions.LidState != nil {
-		if *p.Conditions.LidState != state.LidState {
+		if *p.Conditions.LidState != state.lidState {
 			return false
 		}
 	}
 
 	if p.Conditions.PowerState != nil {
-		if *p.Conditions.PowerState != state.PowerState {
+		if *p.Conditions.PowerState != state.powerState {
 			return false
 		}
 	}

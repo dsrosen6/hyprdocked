@@ -125,18 +125,18 @@ func (a *app) listen(ctx context.Context) error {
 					slog.Error("listing current monitors", "error", err)
 					continue
 				}
-				if !reflect.DeepEqual(a.currentState.Monitors, m) {
-					a.currentState.Monitors = m
-					slog.Debug("monitors state updated", "state", a.currentState.Monitors)
+				if !reflect.DeepEqual(a.currentState.monitors, m) {
+					a.currentState.monitors = m
+					slog.Debug("monitors state updated", "state", a.currentState.monitors)
 				}
 
 			case lidSwitchEvent:
-				a.currentState.LidState = parseLidState(ev.Details)
-				slog.Debug("lid state updated", "state", a.currentState.LidState)
+				a.currentState.lidState = parseLidState(ev.Details)
+				slog.Debug("lid state updated", "state", a.currentState.lidState)
 
 			case powerChangedEvent:
-				a.currentState.PowerState = parsePowerState(ev.Details)
-				slog.Debug("power state updated", "state", a.currentState.PowerState)
+				a.currentState.powerState = parsePowerState(ev.Details)
+				slog.Debug("power state updated", "state", a.currentState.powerState)
 
 			case configUpdatedEvent:
 				// Update config values
@@ -175,7 +175,7 @@ func (a *app) listen(ctx context.Context) error {
 // newLabelLookup creates a labelLookup with the user's config monitors and current app state monitors,
 // which were fetched from Hyprland.
 func (a *app) newLabelLookup() labelLookup {
-	return newLabelLookup(a.cfg.Monitors, a.currentState.Monitors)
+	return newLabelLookup(a.cfg.Monitors, a.currentState.monitors)
 }
 
 func (a *app) validateAllProfiles() {
@@ -204,8 +204,8 @@ func getInitialState(ctx context.Context, dc *dbus.Conn, hc *hyprClient) (*state
 	}
 
 	return &state{
-		LidState:   ls,
-		PowerState: ps,
-		Monitors:   m,
+		lidState:   ls,
+		powerState: ps,
+		monitors:   m,
 	}, nil
 }

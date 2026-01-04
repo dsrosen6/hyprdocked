@@ -179,6 +179,14 @@ var (
 		},
 	}
 
+	testProfileNoMonitorStates = &profile{
+		Name: "no-monitor-states",
+		Conditions: conditions{
+			LidState:        lidStateToPtr(lidStateOpened),
+			EnabledMonitors: []string{"laptop"},
+		},
+	}
+
 	testProfileSetDefault = []*profile{
 		testProfileDockedClosed,
 		testProfileDockedOpened,

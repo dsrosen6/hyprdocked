@@ -76,6 +76,11 @@ func (p *profile) validate(monitors monitorConfigMap) {
 		}
 	}
 
+	if len(p.MonitorStates) == 0 {
+		valid = false
+		pLog.Warn("invalid profile: no monitor states provided")
+	}
+
 	for _, s := range p.MonitorStates {
 		if !validMonitorLabel(monitors, s.Label) {
 			valid = false

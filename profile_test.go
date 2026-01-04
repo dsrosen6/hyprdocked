@@ -36,6 +36,11 @@ func TestValidateProfile(t *testing.T) {
 			profile:   testProfileLaptopOnlyOpen,
 			wantValid: true,
 		},
+		{
+			name:      "noMonitorStates",
+			profile:   testProfileNoMonitorStates,
+			wantValid: false,
+		},
 	}
 
 	for _, v := range tests {

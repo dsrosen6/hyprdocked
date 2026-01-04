@@ -1,5 +1,7 @@
 # hyprlaptop
 
+**This documentation is out of date and will be updated soon.**
+
 `hyprlaptop` is a helper for laptops using `hyprland` that are used in both regular laptop mode and docked to a monitor (both clamshell and open).
 
 It listens for:
@@ -11,26 +13,26 @@ It listens for:
 
 When any of the above events are received, `hyprlaptop` checks the current display arrangement against the expected arrangement in the config, and makes sure any changes are made to make it match the config.
 
-#### Behavior
+## Behavior
 
 - Closing the laptop lid while docked will automatically disable the laptop display
   - Then, opening it will re-enable the laptop display
 - Closing the laptop lid while not docked (which would suspend) and then docking will result in only the external being enabled on next wake
 - Unplugging the laptop while docked will result in a smooth transition from multi-display to one display
 
-#### Why?
+## Why?
 
 Lots of people have done this via a bash script that runs on lid open/close. I used something similar but it resulted in a lot of the dreaded "oopsie daisy" display because I switch between docked and undocked a lot on my laptop. So I wrote this to provide better error handling and config management.
 
 ## Installation
 
-##### From Source
+### From Source
 
 ```go
 go install github.com/dsrosen6/hyprlaptop@latest
 ```
 
-##### Nix Home Manager
+### Nix Home Manager
 
 Add this to your flake inputs:
 
@@ -90,7 +92,7 @@ Log out and back in and everything should be up and running.
 
 ## Config
 
-#### Easy Mode
+### Easy Mode
 
 Open your laptop lid and get your displays *exactly* as you would want them if you were using your externals with your lid open (even if you don't really ever do this like me). You can do this via `hyprctl` commands or via your `hyprland` config.  
 

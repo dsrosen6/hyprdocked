@@ -15,12 +15,6 @@ type labeledMonitor struct {
 // confirmation that a legitimate monitor exists for a given label.
 type labelLookup map[string]labeledMonitor
 
-// newLabelLookup creates a labelLookup with the user's config monitors and current app state monitors,
-// which were fetched from Hyprland.
-func (a *app) newLabelLookup() labelLookup {
-	return newLabelLookup(a.cfg.Monitors, a.currentState.Monitors)
-}
-
 // newLabelLookup creates a labelLookup from the user's config and the monitors fetched from Hyprland.
 func newLabelLookup(cfgMtrs monitorConfigMap, hyprMtrs []monitor) labelLookup {
 	lookup := make(labelLookup)

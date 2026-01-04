@@ -172,6 +172,20 @@ func (a *app) listen(ctx context.Context) error {
 	}
 }
 
+// newLabelLookup creates a labelLookup with the user's config monitors and current app state monitors,
+// which were fetched from Hyprland.
+func (a *app) newLabelLookup() labelLookup {
+	return newLabelLookup(a.cfg.Monitors, a.currentState.Monitors)
+}
+
+func (a *app) validateAllProfiles() {
+	validateProfiles(a.cfg.Profiles, a.cfg.Monitors)
+}
+
+func (a *app) getMatchingProfile(lookup labelLookup) *profile {
+	return getMatchingProfile(a.cfg.Profiles, lookup, a.currentState)
+}
+
 func getInitialState(ctx context.Context, dc *dbus.Conn, hc *hyprClient) (*state, error) {
 	// TODO: theres gotta be a better way
 	ls, err := newLidHandler(dc).getCurrentState(ctx)

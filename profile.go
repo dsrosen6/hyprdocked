@@ -27,44 +27,22 @@ type (
 	}
 )
 
-func (a *app) getMatchingProfile(lookup labelLookup) *profile {
-	var matched *profile
-	for _, p := range a.cfg.Profiles {
-		if a.profileMatchesState(p, lookup) {
-			if !p.valid {
-				slog.Warn("conditions met for profile, but the profile is invalid; skipping", "profile", p.Name)
-				continue
-			}
-			matched = p
-		}
-	}
-
-	return matched
-}
-
-func (a *app) profileMatchesState(p *profile, lookup labelLookup) bool {
+func (p *profile) matchesState(lookup labelLookup, state *state) bool {
 	if p.Conditions.LidState != nil {
-		if *p.Conditions.LidState != a.currentState.LidState {
+		if *p.Conditions.LidState != state.LidState {
 			return false
 		}
 	}
 
 	if p.Conditions.PowerState != nil {
-		if *p.Conditions.PowerState != a.currentState.PowerState {
+		if *p.Conditions.PowerState != state.PowerState {
 			return false
 		}
 	}
 
-	for _, requiredLabel := range p.Conditions.EnabledMonitors {
-		lm, ok := lookup[requiredLabel]
+	for _, label := range p.Conditions.EnabledMonitors {
+		lm, ok := lookup[label]
 		if !ok || !lm.CurrentlyEnabled {
-			return false
-		}
-	}
-
-	// if exact match is required, ensure no extra monitors are connected
-	if p.ExactMatch {
-		if len(a.currentState.Monitors) != len(p.Conditions.EnabledMonitors) {
 			return false
 		}
 	}
@@ -72,15 +50,10 @@ func (a *app) profileMatchesState(p *profile, lookup labelLookup) bool {
 	return true
 }
 
-func (a *app) validateAllProfiles() {
-	for _, p := range a.cfg.Profiles {
-		a.validateProfile(p)
-	}
-}
-
-func (a *app) validateProfile(p *profile) {
+func (p *profile) validate(monitors monitorConfigMap) {
 	valid := true
 	pLog := slog.Default().With(slog.String("profile_name", p.Name))
+
 	if p.Conditions.LidState != nil {
 		parsed := parseLidState(string(*p.Conditions.LidState))
 		if parsed == lidStateUnknown {
@@ -97,14 +70,14 @@ func (a *app) validateProfile(p *profile) {
 	}
 
 	for _, m := range p.Conditions.EnabledMonitors {
-		if !a.validMonitorLabel(m) {
+		if !validMonitorLabel(monitors, m) {
 			valid = false
 			pLog.Warn("invalid condition: enabled monitor", "label", m)
 		}
 	}
 
 	for _, s := range p.MonitorStates {
-		if !a.validMonitorLabel(s.Label) {
+		if !validMonitorLabel(monitors, s.Label) {
 			valid = false
 			pLog.Warn("invalid monitor state", "label", s.Label, "reason", "label not found")
 			continue
@@ -117,7 +90,7 @@ func (a *app) validateProfile(p *profile) {
 				continue
 			}
 
-			if !a.validMonitorPreset(s.Label, *s.Preset) {
+			if !validMonitorPreset(monitors[s.Label].Presets, *s.Preset) {
 				valid = false
 				pLog.Warn("invalid monitor state", "label", s.Label, "reason", "preset not found", "preset", *s.Preset)
 			}
@@ -127,16 +100,25 @@ func (a *app) validateProfile(p *profile) {
 	p.valid = valid
 }
 
-func (a *app) validMonitorLabel(label string) bool {
-	return validMonitorLabel(a.cfg.Monitors, label)
-}
-
-func (a *app) validMonitorPreset(monitor, preset string) bool {
-	if !a.validMonitorLabel(monitor) {
-		return false
+func getMatchingProfile(pr []*profile, lookup labelLookup, state *state) *profile {
+	var matched *profile
+	for _, p := range pr {
+		if p.matchesState(lookup, state) {
+			if !p.valid {
+				slog.Warn("conditions met for profile, but the profile is invalid; skipping", "profile", p.Name)
+				continue
+			}
+			matched = p
+		}
 	}
 
-	return validMonitorPreset(a.cfg.Monitors[monitor].Presets, preset)
+	return matched
+}
+
+func validateProfiles(pr []*profile, m monitorConfigMap) {
+	for _, p := range pr {
+		p.validate(m)
+	}
 }
 
 func validMonitorLabel(monitors monitorConfigMap, label string) bool {

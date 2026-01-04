@@ -26,10 +26,6 @@ func (s *state) ready() bool {
 		notReady = append(notReady, "power")
 	}
 
-	if len(s.monitors) == 0 {
-		notReady = append(notReady, "monitors")
-	}
-
 	if len(notReady) > 0 {
 		nr := strings.Join(notReady, ",")
 		slog.Info("ready check: one or more states not ready", "states", nr)

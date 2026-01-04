@@ -47,6 +47,13 @@ func (p *profile) matchesState(lookup labelLookup, state *state) bool {
 		}
 	}
 
+	// if exact match is required, ensure no extra monitors are connected
+	if p.ExactMatch {
+		if len(state.monitors) != len(p.Conditions.EnabledMonitors) {
+			return false
+		}
+	}
+
 	return true
 }
 
@@ -113,6 +120,7 @@ func getMatchingProfile(pr []*profile, lookup labelLookup, state *state) *profil
 				slog.Warn("conditions met for profile, but the profile is invalid; skipping", "profile", p.Name)
 				continue
 			}
+			slog.Debug("getMatchingProfile: found matching profile", "profile", p.Name)
 			matched = p
 		}
 	}

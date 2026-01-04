@@ -18,8 +18,14 @@ const (
 type (
 	config struct {
 		path     string
+		Laptop   laptopInfo       `json:"laptop"`
 		Monitors monitorConfigMap `json:"monitors"`
 		Profiles []*profile       `json:"profiles"`
+	}
+
+	laptopInfo struct {
+		Name            string          `json:"name"`
+		DefaultSettings monitorSettings `json:"default_settings"`
 	}
 
 	monitorConfig struct {

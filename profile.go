@@ -56,7 +56,8 @@ func (a *app) profileMatchesState(p *profile, lookup labelLookup) bool {
 	}
 
 	for _, requiredLabel := range p.Conditions.EnabledMonitors {
-		if _, ok := lookup[requiredLabel]; !ok {
+		lm, ok := lookup[requiredLabel]
+		if !ok || !lm.CurrentlyEnabled {
 			return false
 		}
 	}

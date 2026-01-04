@@ -16,3 +16,24 @@ func (s set[E]) add(vals ...E) {
 		s[v] = struct{}{}
 	}
 }
+
+func strToPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+func lidStateToPtr(ls lidState) *lidState {
+	if ls == lidStateUnknown {
+		return nil
+	}
+	return &ls
+}
+
+func powerStateToPtr(ps powerState) *powerState {
+	if ps == powerStateUnknown {
+		return nil
+	}
+	return &ps
+}

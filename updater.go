@@ -34,13 +34,16 @@ func (a *app) createUpdateParams(st status) *monitorUpdateParams {
 	var toUpdate, toDisable, noChanges []monitor
 
 	switch st {
-	case statusOnlyLaptopOpened:
+	case statusOnlyLaptopOpened, statusOnlyLaptopClosed:
+		// we still want to enable the laptop display even if it's closed. This is so
+		// we don't get an "oopsie daisy" from hyprland when waking.
 		m := a.currentState.getMonitorByIdentifiers(a.cfg.Laptop.monitorIdentifiers)
-		if m == nil || (m != nil && changesNeeded(a.cfg.Laptop, *m)) {
+		if m == nil || changesNeeded(a.cfg.Laptop, *m) {
 			toUpdate = append(toUpdate, a.cfg.Laptop)
 		} else {
 			noChanges = append(noChanges, a.cfg.Laptop)
 		}
+
 	case statusDockedClosed, statusDockedOpened:
 		for _, cm := range a.cfg.Monitors {
 			m := a.currentState.getMonitorByIdentifiers(cm.monitorIdentifiers)
@@ -61,7 +64,7 @@ func (a *app) createUpdateParams(st status) *monitorUpdateParams {
 			}
 		} else {
 			m := a.currentState.getMonitorByIdentifiers(a.cfg.Laptop.monitorIdentifiers)
-			if m == nil || (m != nil && changesNeeded(a.cfg.Laptop, *m)) {
+			if m == nil || changesNeeded(a.cfg.Laptop, *m) {
 				toUpdate = append(toUpdate, a.cfg.Laptop)
 			} else {
 				noChanges = append(noChanges, a.cfg.Laptop)

@@ -3,7 +3,7 @@ Description=Hyprlaptop Listener
 After=graphical-session.target
 
 [Service]
-ExecStart=hyprlaptop listen
+ExecStart=hyprlaptop
 Restart=on-failure
 RestartSec=2
 

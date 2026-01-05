@@ -84,8 +84,6 @@ func run() error {
 	}
 
 	app := newApp(cfg, h, l, s)
-	app.validateAllProfiles()
-
 	// initial updater run before starting listener
 	_ = app.runUpdater()
 
@@ -145,8 +143,6 @@ func (a *app) listen(ctx context.Context) error {
 					slog.Error("reloading config", "error", err)
 					continue
 				}
-				slog.Info("profiles reloaded", "count", len(a.cfg.Profiles))
-				a.validateAllProfiles()
 			}
 
 			if !a.currentState.ready() {
@@ -170,20 +166,6 @@ func (a *app) listen(ctx context.Context) error {
 			return ctx.Err()
 		}
 	}
-}
-
-// newLabelLookup creates a labelLookup with the user's config monitors and current app state monitors,
-// which were fetched from Hyprland.
-func (a *app) newLabelLookup() labelLookup {
-	return newLabelLookup(a.cfg.Monitors, a.currentState.monitors)
-}
-
-func (a *app) validateAllProfiles() {
-	validateProfiles(a.cfg.Profiles, a.cfg.Monitors)
-}
-
-func (a *app) getMatchingProfile(lookup labelLookup) *profile {
-	return getMatchingProfile(a.cfg.Profiles, lookup, a.currentState)
 }
 
 func getInitialState(ctx context.Context, dc *dbus.Conn, hc *hyprClient) (*state, error) {

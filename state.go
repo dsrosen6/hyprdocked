@@ -5,11 +5,13 @@ import (
 	"strings"
 )
 
-type state struct {
-	lidState   lidState   // current state of laptop lid
-	powerState powerState // current power state (battery/ac)
-	monitors   []monitor  // current monitors, returned by hyprctl monitors
-}
+type (
+	state struct {
+		lidState   lidState   // current state of laptop lid
+		powerState powerState // current power state (battery/ac)
+		monitors   []monitor  // current monitors, returned by hyprctl monitors
+	}
+)
 
 func (s *state) ready() bool {
 	if s == nil {
@@ -33,4 +35,14 @@ func (s *state) ready() bool {
 	}
 
 	return true
+}
+
+func (s *state) getMonitorByIdentifiers(ident monitorIdentifiers) *monitor {
+	for _, m := range s.monitors {
+		if matchesIdentifiers(m, ident) {
+			return &m
+		}
+	}
+
+	return nil
 }

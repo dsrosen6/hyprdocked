@@ -14,21 +14,15 @@ func (a *app) runUpdater() error {
 		a.updating = false
 	}()
 
-	lookup := a.newLabelLookup()
-	matched := a.getMatchingProfile(lookup)
-	if matched == nil {
-		slog.Info("no profile match found")
-		return nil
-	}
-
-	params := a.updateParamsFromProfile(matched, lookup)
+	st := a.getStatus()
+	params := a.createUpdateParams(st)
 	logUpdateParams(*params)
 	if len(params.enableOrUpdate) == 0 && len(params.disable) == 0 {
-		slog.Info("found profile match; no changes needed", "profile", matched.Name)
+		slog.Info("no changes needed", "status", st.string())
 		return nil
 	}
 
-	slog.Info("found profile match; applying updates", "profile", matched.Name)
+	slog.Info("applying updates", "status", st.string())
 	if err := a.hctl.bulkUpdateMonitors(params); err != nil {
 		return fmt.Errorf("bulk updating monitors: %w", err)
 	}
@@ -36,64 +30,50 @@ func (a *app) runUpdater() error {
 	return nil
 }
 
-func (a *app) updateParamsFromProfile(p *profile, lookup labelLookup) *monitorUpdateParams {
+func (a *app) createUpdateParams(st status) *monitorUpdateParams {
 	var toUpdate, toDisable, noChanges []monitor
-	seenNames := newSet[string]()
 
-	for _, s := range p.MonitorStates {
-		lm, ok := lookup[s.Label]
-		if !ok {
-			continue
+	switch st {
+	case statusOnlyLaptopOpened:
+		m := a.currentState.getMonitorByIdentifiers(a.cfg.Laptop.monitorIdentifiers)
+		if m == nil || (m != nil && changesNeeded(a.cfg.Laptop, *m)) {
+			toUpdate = append(toUpdate, a.cfg.Laptop)
+		} else {
+			noChanges = append(noChanges, a.cfg.Laptop)
 		}
-		seenNames.add(lm.Monitor.Name)
-
-		if !lm.CurrentlyEnabled {
-			if s.Disable {
-				slog.Debug("update param builder: no monitor found for label, but marked for disable, no action needed", "label", s.Label)
+	case statusDockedClosed, statusDockedOpened:
+		for _, cm := range a.cfg.Monitors {
+			m := a.currentState.getMonitorByIdentifiers(cm.monitorIdentifiers)
+			if m == nil {
 				continue
 			}
+
+			if changesNeeded(cm, *m) {
+				toUpdate = append(toUpdate, cm)
+				continue
+			}
+			noChanges = append(noChanges, cm)
 		}
 
-		if s.Disable {
-			toDisable = append(toDisable, lm.Monitor)
-			continue
-		}
-
-		if s.Preset == nil {
-			// no preset provided, just assume it stays the same
-			noChanges = append(toUpdate, lm.Monitor)
-			continue
-		}
-
-		pr, ok := a.cfg.Monitors[s.Label].Presets[*s.Preset]
-		if !ok {
-			slog.Warn("update param builder: provided preset doesn't exist", "preset", s.Preset)
-			continue
-		}
-
-		// check if changes are needed
-		if reflect.DeepEqual(pr, lm.Monitor.monitorSettings) {
-			noChanges = append(noChanges, lm.Monitor)
-			continue
-		}
-
-		m := monitor{
-			monitorIdentifiers: lm.Monitor.monitorIdentifiers,
-			monitorSettings:    pr,
-		}
-
-		toUpdate = append(toUpdate, m)
-	}
-
-	if p.DisableUndeclared {
-		for _, m := range a.currentState.monitors {
-			if seenNames.contains(m.Name) {
-				toDisable = append(toDisable, m)
+		if st == statusDockedClosed {
+			if a.currentState.getMonitorByIdentifiers(a.cfg.Laptop.monitorIdentifiers) != nil {
+				toDisable = append(toDisable, a.cfg.Laptop)
+			}
+		} else {
+			m := a.currentState.getMonitorByIdentifiers(a.cfg.Laptop.monitorIdentifiers)
+			if m == nil || (m != nil && changesNeeded(a.cfg.Laptop, *m)) {
+				toUpdate = append(toUpdate, a.cfg.Laptop)
+			} else {
+				noChanges = append(noChanges, a.cfg.Laptop)
 			}
 		}
 	}
 
 	return newMonitorUpdateParams(toUpdate, toDisable, noChanges)
+}
+
+func changesNeeded(a, b monitor) bool {
+	return !reflect.DeepEqual(a.monitorSettings, b.monitorSettings)
 }
 
 func logUpdateParams(params monitorUpdateParams) {

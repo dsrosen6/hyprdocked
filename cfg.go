@@ -18,29 +18,14 @@ const (
 type (
 	config struct {
 		path     string
-		Laptop   laptopInfo       `json:"laptop"`
-		Monitors monitorConfigMap `json:"monitors"`
-		Profiles []*profile       `json:"profiles"`
+		Laptop   monitor   `json:"laptop"`
+		Monitors []monitor `json:"monitors"`
 	}
-
-	laptopInfo struct {
-		Name            string          `json:"name"`
-		DefaultSettings monitorSettings `json:"default_settings"`
-	}
-
-	monitorConfig struct {
-		Identifiers monitorIdentifiers `json:"identifiers"`
-		Presets     monitorPresetMap   `json:"presets"`
-	}
-
-	monitorConfigMap map[string]monitorConfig
-	monitorPresetMap map[string]monitorSettings
 )
 
 func defaultCfg(path string) *config {
 	return &config{
-		path:     path,
-		Profiles: []*profile{},
+		path: path,
 	}
 }
 
@@ -64,20 +49,12 @@ func (c *config) reload(maxRetries int) error {
 		return fmt.Errorf("reading config: %w", err)
 	}
 
-	m := make(monitorConfigMap)
-	p := []*profile{}
-
+	m := []monitor{}
 	if u.Monitors != nil {
 		m = u.Monitors
 	}
 
-	if u.Profiles != nil {
-		p = u.Profiles
-	}
-
 	c.Monitors = m
-	c.Profiles = p
-
 	return nil
 }
 

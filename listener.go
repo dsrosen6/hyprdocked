@@ -5,7 +5,9 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"io"
 	"log/slog"
+	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -46,6 +48,7 @@ const (
 	displayUnknownEvent eventType = "DISLAY_UNKNOWN_EVENT"
 	lidSwitchEvent      eventType = "LID_SWITCH"
 	powerChangedEvent   eventType = "POWER_CHANGED"
+	cmdSockName                   = "hyprlaptop.sock"
 )
 
 func newListener(hs *hyprSocketConn, dc *dbus.Conn, cfgPath string) (*listener, error) {
@@ -234,6 +237,52 @@ func (l *listener) listenPowerEvents(ctx context.Context, events chan<- listener
 	}
 
 	return nil
+}
+
+func (l *listener) listenCommandEvents(ctx context.Context, events chan<- listenerEvent) error {
+	sock := filepath.Join(os.TempDir(), cmdSockName)
+
+	// remove existing file if it already exists
+	_ = os.Remove(sock)
+
+	ln, err := net.Listen("unix", sock)
+	if err != nil {
+		return fmt.Errorf("command listener: listening to unix socket: %w", err)
+	}
+
+	defer func() {
+		if err := ln.Close(); err != nil {
+			slog.Error("command listener: closing hyprlaptop socket", "error", err)
+		}
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			conn, err := ln.Accept()
+			if err != nil {
+				continue
+			}
+
+			go func() {
+				defer func() {
+					if err := conn.Close(); err != nil {
+						slog.Error("command listener: closing socket conn", "error", err)
+					} else {
+						slog.Debug("command listener: socket conn closed")
+					}
+				}()
+
+				buf, _ := io.ReadAll(conn)
+				msg := strings.TrimSpace(string(buf))
+
+				switch msg {
+				}
+			}()
+		}
+	}
 }
 
 // parseDisplayEvent splits the event string and returns what type of event it is.

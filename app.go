@@ -34,6 +34,17 @@ func run() error {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
 
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case string(suspendCmdEvent):
+			return sendSuspendCmd()
+		case string(wakeCmdEvent):
+			return sendWakeCmd()
+		default:
+			fmt.Printf("unknown command: %s\n", os.Args[1])
+		}
+	}
+
 	cfg, err := initConfig("")
 	if err != nil {
 		return fmt.Errorf("initializing config: %w", err)
@@ -143,6 +154,12 @@ func (a *app) listen(ctx context.Context) error {
 					slog.Error("reloading config", "error", err)
 					continue
 				}
+			case suspendCmdEvent:
+				slog.Info("suspended command received")
+				a.currentState.suspended = true
+			case wakeCmdEvent:
+				slog.Info("wake command received")
+				a.currentState.suspended = false
 			}
 
 			if !a.currentState.ready() {

@@ -48,6 +48,8 @@ const (
 	displayUnknownEvent eventType = "DISLAY_UNKNOWN_EVENT"
 	lidSwitchEvent      eventType = "LID_SWITCH"
 	powerChangedEvent   eventType = "POWER_CHANGED"
+	suspendCmdEvent     eventType = "SUSPEND_CMD"
+	wakeCmdEvent        eventType = "WAKE_CMD"
 	cmdSockName                   = "hyprlaptop.sock"
 )
 
@@ -86,6 +88,13 @@ func (l *listener) listen(ctx context.Context, events chan<- listenerEvent) erro
 		slog.Debug("listening for power events")
 		if err := l.listenPowerEvents(ctx, events); err != nil {
 			errc <- fmt.Errorf("power listener: %w", err)
+		}
+	}()
+
+	go func() {
+		slog.Debug("listening for command events")
+		if err := l.listenCommandEvents(ctx, events); err != nil {
+			errc <- fmt.Errorf("command listener: %w", err)
 		}
 	}()
 
@@ -279,6 +288,12 @@ func (l *listener) listenCommandEvents(ctx context.Context, events chan<- listen
 				msg := strings.TrimSpace(string(buf))
 
 				switch msg {
+				case string(wakeCmdEvent):
+					events <- wakeCmd
+				case string(suspendCmdEvent):
+					events <- suspendCmd
+				default:
+					slog.Warn("command listener: got unknown command", "command", msg)
 				}
 			}()
 		}

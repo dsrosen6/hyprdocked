@@ -14,6 +14,11 @@ func (a *app) runUpdater() error {
 	}()
 
 	st := a.getStatus()
+	if a.currentState.suspended {
+		slog.Debug("device is preparing to suspend; setting status to laptop only")
+		st = statusOnlyLaptopOpened
+	}
+
 	params := a.createUpdateParams(st)
 	logUpdateParams(*params)
 	if len(params.enableOrUpdate) == 0 && len(params.disable) == 0 {

@@ -9,7 +9,8 @@ type (
 	state struct {
 		lidState   lidState   // current state of laptop lid
 		powerState powerState // current power state (battery/ac)
-		monitors   []monitor  // current monitors, returned by hyprctl monitors
+		suspended  bool
+		monitors   []monitor // current monitors, returned by hyprctl monitors
 	}
 )
 

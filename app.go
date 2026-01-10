@@ -36,10 +36,17 @@ func run() error {
 
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
-		case string(suspendCmdEvent):
-			return sendSuspendCmd()
-		case string(wakeCmdEvent):
-			return sendWakeCmd()
+		case "suspend":
+			if err := sendSuspendCmd(); err != nil {
+				return fmt.Errorf("sending suspend command: %w", err)
+			}
+			time.Sleep(2 * time.Second) // give listener time before idle agent actually suspends
+			return nil
+		case "wake":
+			if err := sendWakeCmd(); err != nil {
+				return fmt.Errorf("sending wake command: %w", err)
+			}
+			return nil
 		default:
 			fmt.Printf("unknown command: %s\n", os.Args[1])
 		}
@@ -156,10 +163,11 @@ func (a *app) listen(ctx context.Context) error {
 				}
 			case suspendCmdEvent:
 				slog.Info("suspended command received")
-				a.currentState.suspended = true
+				a.currentState.mode = modeSuspending
+
 			case wakeCmdEvent:
 				slog.Info("wake command received")
-				a.currentState.suspended = false
+				a.currentState.mode = modeWaking
 			}
 
 			if !a.currentState.ready() {
@@ -174,6 +182,12 @@ func (a *app) listen(ctx context.Context) error {
 
 			if err := a.runUpdater(); err != nil {
 				slog.Error("running updater", "error", err)
+			}
+
+			if a.currentState.mode == modeWaking {
+				a.currentState.mode = modeNormal
+				slog.Debug("wake done; resetting suspended monitors", "total_to_remove", len(a.currentState.suspendedMonitors))
+				a.currentState.suspendedMonitors = []monitor{}
 			}
 
 		case err := <-errc:

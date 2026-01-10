@@ -14,20 +14,25 @@ func (a *app) runUpdater() error {
 	}()
 
 	st := a.getStatus()
-	if a.currentState.suspended {
-		slog.Debug("device is preparing to suspend; setting status to laptop only")
-		st = statusOnlyLaptopOpened
-	}
 
-	params := a.createUpdateParams(st)
-	logUpdateParams(*params)
-	if len(params.enableOrUpdate) == 0 && len(params.disable) == 0 {
+	var p *monitorUpdateParams
+	switch a.currentState.mode {
+	case modeSuspending:
+		p = a.suspendingUpdateParams()
+	case modeWaking:
+		p = a.wakingUpdateParams()
+	default:
+		p = a.createUpdateParams(st)
+	}
+	logUpdateParams(*p)
+
+	if len(p.enableOrUpdate) == 0 && len(p.disable) == 0 {
 		slog.Info("no changes needed", "status", st.string())
 		return nil
 	}
 
 	slog.Info("applying updates", "status", st.string())
-	if err := a.hctl.bulkUpdateMonitors(params); err != nil {
+	if err := a.hctl.bulkUpdateMonitors(p); err != nil {
 		return fmt.Errorf("bulk updating monitors: %w", err)
 	}
 
@@ -92,6 +97,31 @@ func (a *app) createUpdateParams(st status) *monitorUpdateParams {
 				noChanges = append(noChanges, a.cfg.Laptop)
 			}
 		}
+
+	}
+
+	return newMonitorUpdateParams(toUpdate, toDisable, noChanges)
+}
+
+func (a *app) suspendingUpdateParams() *monitorUpdateParams {
+	var toUpdate, toDisable, noChanges []monitor
+	// add ALL externals to disable group, and also to suspended monitors in state memory
+	for _, m := range a.currentState.monitors {
+		if !matchesIdentifiers(m, a.cfg.Laptop.monitorIdentifiers) {
+			toDisable = append(toDisable, m)
+			a.currentState.suspendedMonitors = append(a.currentState.suspendedMonitors, m)
+			slog.Debug("updater: suspending, adding external monitor to disable and suspended lists", monitorLogGroup(m.Name, m))
+		}
+	}
+	toUpdate = append(toUpdate, a.cfg.Laptop)
+	return newMonitorUpdateParams(toUpdate, toDisable, noChanges)
+}
+
+func (a *app) wakingUpdateParams() *monitorUpdateParams {
+	var toUpdate, toDisable, noChanges []monitor
+	for _, m := range a.currentState.suspendedMonitors {
+		toUpdate = append(toUpdate, m)
+		slog.Debug("updater: waking, adding previously suspended monitor to enable list", monitorLogGroup(m.Name, m))
 	}
 
 	return newMonitorUpdateParams(toUpdate, toDisable, noChanges)

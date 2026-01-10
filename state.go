@@ -7,11 +7,21 @@ import (
 
 type (
 	state struct {
-		lidState   lidState   // current state of laptop lid
-		powerState powerState // current power state (battery/ac)
-		suspended  bool
-		monitors   []monitor // current monitors, returned by hyprctl monitors
+		lidState          lidState   // current state of laptop lid
+		powerState        powerState // current power state (battery/ac)
+		suspended         bool
+		mode              mode
+		monitors          []monitor // current monitors, returned by hyprctl monitors
+		suspendedMonitors []monitor
 	}
+
+	mode int
+)
+
+const (
+	modeNormal mode = iota
+	modeSuspending
+	modeWaking
 )
 
 func (s *state) ready() bool {

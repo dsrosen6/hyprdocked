@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"context"
@@ -29,7 +29,7 @@ func newApp(hc *hyprClient, l *listener, s *state) *app {
 	}
 }
 
-func run() error {
+func Run() error {
 	if strings.ToLower(os.Getenv("DEBUG")) == "true" {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}

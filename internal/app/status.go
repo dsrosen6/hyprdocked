@@ -1,4 +1,4 @@
-package main
+package app
 
 // status is the combined status of the device's docked (external or just laptop),
 // power (ac or battery) and lid (closed or opened).

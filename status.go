@@ -1,5 +1,7 @@
 package main
 
+// status is the combined status of the device's docked (external or just laptop),
+// power (ac or battery) and lid (closed or opened).
 type status int
 
 const (
@@ -42,6 +44,10 @@ func (s status) string() string {
 	default:
 		return "unknown"
 	}
+}
+
+func (s status) isDocked() bool {
+	return s == statusDockedOpened || s == statusDockedClosed
 }
 
 func getStatus(externals []monitor, state *state) status {

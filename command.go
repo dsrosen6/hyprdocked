@@ -7,6 +7,14 @@ import (
 	"path/filepath"
 )
 
+func sendSuspendCmd() error {
+	return sendCmd(string(suspendCmdEvent))
+}
+
+func sendWakeCmd() error {
+	return sendCmd(string(wakeCmdEvent))
+}
+
 func sendCmd(msg string) error {
 	sock := filepath.Join(os.TempDir(), cmdSockName)
 	conn, err := net.Dial("unix", sock)

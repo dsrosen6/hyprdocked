@@ -20,7 +20,7 @@ func (a *app) runUpdater() error {
 	case modeSuspending:
 		p = a.suspendingUpdateParams()
 	case modeWaking:
-		p = a.wakingUpdateParams()
+		p = a.wakingUpdateParams(st)
 	default:
 		p = a.createUpdateParams(st)
 	}
@@ -117,14 +117,28 @@ func (a *app) suspendingUpdateParams() *monitorUpdateParams {
 	return newMonitorUpdateParams(toUpdate, toDisable, noChanges)
 }
 
-func (a *app) wakingUpdateParams() *monitorUpdateParams {
-	var toUpdate, toDisable, noChanges []monitor
-	for _, m := range a.currentState.suspendedMonitors {
-		toUpdate = append(toUpdate, m)
-		slog.Debug("updater: waking, adding previously suspended monitor to enable list", monitorLogGroup(m.Name, m))
+func (a *app) wakingUpdateParams(st status) *monitorUpdateParams {
+	p := &monitorUpdateParams{
+		enableOrUpdate: []monitor{},
+		disable:        []monitor{},
+		noChanges:      []monitor{},
 	}
 
-	return newMonitorUpdateParams(toUpdate, toDisable, noChanges)
+	if len(a.currentState.suspendedMonitors) == 0 {
+		slog.Debug("updater: waking: no suspended monitors in memory")
+		return p
+	}
+
+	if st.isDocked() {
+		for _, m := range a.currentState.suspendedMonitors {
+			p.enableOrUpdate = append(p.enableOrUpdate, m)
+			slog.Debug("updater: waking: adding previously suspended monitor to enable list", monitorLogGroup(m.Name, m))
+		}
+	} else {
+		slog.Debug("updater: waking: suspended monitors found in memory, but not docked")
+	}
+
+	return p
 }
 
 func changesNeeded(cfg, state monitor) bool {

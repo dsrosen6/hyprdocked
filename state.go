@@ -1,20 +1,23 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"log/slog"
 	"strings"
 )
 
 type (
+	// state contains all of the entities that can frequently change.
 	state struct {
 		lidState          lidState   // current state of laptop lid
 		powerState        powerState // current power state (battery/ac)
-		suspended         bool
 		mode              mode
 		monitors          []monitor // current monitors, returned by hyprctl monitors
 		suspendedMonitors []monitor
 	}
 
+	// mode is the operating mode of the app.
 	mode int
 )
 
@@ -56,4 +59,27 @@ func (s *state) getMonitorByIdentifiers(ident monitorIdentifiers) *monitor {
 	}
 
 	return nil
+}
+
+func getInitialState(ctx context.Context, hc *hyprClient, lh *lidHandler, ph *powerHandler) (*state, error) {
+	ls, err := lh.getCurrentState(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("getting lid status: %w", err)
+	}
+
+	ps, err := ph.getCurrentState(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("getting power status: %w", err)
+	}
+
+	m, err := hc.listMonitors()
+	if err != nil {
+		return nil, fmt.Errorf("listing monitors: %w", err)
+	}
+
+	return &state{
+		lidState:   ls,
+		powerState: ps,
+		monitors:   m,
+	}, nil
 }

@@ -49,7 +49,7 @@
               };
 
               Service = {
-                ExecStart = "${cfg.package}/bin/hyprdocked listen";
+                ExecStart = "${cfg.package}/bin/hyprdocked";
                 Restart = "on-failure";
                 RestartSec = 2;
               };

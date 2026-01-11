@@ -1,6 +1,6 @@
 [Unit]
 Description=Hyprdocked Listener
-After=graphical-session.target
+After=wayland-session@Hyprland.target
 
 [Service]
 ExecStart=hyprdocked

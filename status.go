@@ -13,20 +13,7 @@ const (
 )
 
 func (a *app) getStatus() status {
-	em := a.externalMonitors()
-	return getStatus(em, a.currentState)
-}
-
-func (a *app) externalMonitors() []monitor {
-	var em []monitor
-	for _, m := range a.currentState.monitors {
-		if matchesIdentifiers(m, a.cfg.Laptop.monitorIdentifiers) {
-			continue
-		}
-		em = append(em, m)
-	}
-
-	return em
+	return getStatus(a.laptopDisplay, a.allDisplays, a.state)
 }
 
 func (s status) string() string {
@@ -46,12 +33,8 @@ func (s status) string() string {
 	}
 }
 
-func (s status) isDocked() bool {
-	return s == statusDockedOpened || s == statusDockedClosed
-}
-
-func getStatus(externals []monitor, state *state) status {
-	if len(externals) == 0 {
+func getStatus(laptopDisplay display, allDisplays []display, state *state) status {
+	if displayReady(laptopDisplay) && len(allDisplays) <= 1 {
 		return laptopOnlyStatus(state.lidState)
 	}
 

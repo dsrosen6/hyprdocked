@@ -5,60 +5,73 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/godbus/dbus/v5"
 )
 
+const version = "0.2.0"
+
 type app struct {
 	hctl          *hyprClient
-	cfg           *config
 	listener      *listener
-	currentState  *state
 	updating      bool
 	lastUpdateEnd time.Time
+	*state
 }
 
-func newApp(cfg *config, hc *hyprClient, l *listener, s *state) *app {
+func newApp(hc *hyprClient, l *listener, s *state) *app {
 	return &app{
-		hctl:         hc,
-		cfg:          cfg,
-		listener:     l,
-		currentState: s,
+		hctl:     hc,
+		listener: l,
+		state:    s,
 	}
 }
 
 func run() error {
-	if os.Getenv("DEBUG") == "true" {
+	if strings.ToLower(os.Getenv("DEBUG")) == "true" {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
 
 	if len(os.Args) > 1 {
-		switch os.Args[1] {
+		switch strings.ToLower(os.Args[1]) {
+		case "version":
+			fmt.Println(version)
+			return nil
+
 		case "suspend":
 			if err := sendSuspendCmd(); err != nil {
 				return fmt.Errorf("sending suspend command: %w", err)
 			}
 			time.Sleep(2 * time.Second) // give listener time before idle agent actually suspends
 			return nil
+
 		case "wake":
 			if err := sendWakeCmd(); err != nil {
 				return fmt.Errorf("sending wake command: %w", err)
 			}
 			return nil
+
 		default:
-			fmt.Printf("unknown command: %s\n", os.Args[1])
+			return fmt.Errorf("unknown command: %s", os.Args[1])
 		}
 	}
 
-	cfg, err := initConfig("")
-	if err != nil {
-		return fmt.Errorf("initializing config: %w", err)
-	}
+	return runListener()
+}
 
+func runListener() error {
 	hyprClient, err := newHyprctlClient()
 	if err != nil {
 		return fmt.Errorf("creating hyprctl client: %w", err)
+	}
+
+	// Run an initial reload in case laptop display is already disabled. Assuming the laptop
+	// display is correctly set to initially enable in the hyprland config, this will re-enable
+	// it so hyprdocked can properly identify it.
+	if err := hyprClient.reload(); err != nil {
+		return fmt.Errorf("running hyprctl reload: %w", err)
 	}
 
 	var (
@@ -79,7 +92,6 @@ func run() error {
 			}
 		}
 	}()
-
 	hyprSock, err = newHyprSocketConn()
 	if err != nil {
 		return fmt.Errorf("creating hyprland socket connection: %w", err)
@@ -97,7 +109,6 @@ func run() error {
 		lidHandler:   lh,
 		powerHandler: ph,
 		dbusConn:     dbusConn,
-		cfgPath:      cfg.path,
 	}
 
 	l, err := newListener(p)
@@ -110,7 +121,7 @@ func run() error {
 		return fmt.Errorf("getting initial state: %w", err)
 	}
 
-	app := newApp(cfg, hyprClient, l, s)
+	app := newApp(hyprClient, l, s)
 	// initial updater run before starting listener
 	_ = app.runUpdater()
 

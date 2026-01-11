@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"io"
 	"log/slog"
@@ -14,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/godbus/dbus/v5"
 )
 
@@ -23,7 +21,6 @@ type (
 		hctlSocketConn *hyprSocketConn
 		lidHandler     *lidHandler
 		powerHandler   *powerHandler
-		cfgPath        string
 	}
 
 	listenerEvent struct {
@@ -36,7 +33,6 @@ type (
 		lidHandler   *lidHandler
 		powerHandler *powerHandler
 		dbusConn     *dbus.Conn
-		cfgPath      string
 	}
 
 	eventType string
@@ -45,13 +41,12 @@ type (
 // We are only actively filtering for the v2 monitor events as to not double up (since hyprland
 // sends both a "v1" (monitoradded or monitorremoved) but it's expected that v2 is deprecated and just
 // replaces the original, so this will probably change.
-var monitorEvents = map[string]eventType{
+var displayEvents = map[string]eventType{
 	"monitoraddedv2":   displayAddEvent,
 	"monitorremovedv2": displayRemoveEvent,
 }
 
 const (
-	configUpdatedEvent  eventType = "CONFIG_UPDATED"
 	displayInitialEvent eventType = "DISPLAY_INITIAL"
 	displayAddEvent     eventType = "DISPLAY_ADDED"
 	displayRemoveEvent  eventType = "DISPLAY_REMOVED"
@@ -60,7 +55,7 @@ const (
 	powerChangedEvent   eventType = "POWER_CHANGED"
 	suspendCmdEvent     eventType = "SUSPEND_CMD"
 	wakeCmdEvent        eventType = "WAKE_CMD"
-	cmdSockName                   = "hyprlaptop.sock"
+	cmdSockName                   = "hyprdocked.sock"
 )
 
 func newListener(p listenerParams) (*listener, error) {
@@ -68,12 +63,11 @@ func newListener(p listenerParams) (*listener, error) {
 		hctlSocketConn: p.hyprSockConn,
 		lidHandler:     p.lidHandler,
 		powerHandler:   p.powerHandler,
-		cfgPath:        p.cfgPath,
 	}, nil
 }
 
-// listenAndHandle starts hyprlaptop's listener, which handles hyprctl display add/remove events
-// and events from the hyprlaptop CLI.
+// listenAndHandle starts the hyprdocked listener, which handles hyprctl display add/remove events
+// and events from the hyprdocked CLI.
 func (a *app) listenAndHandle(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -100,41 +94,34 @@ func (a *app) listenAndHandle(ctx context.Context) error {
 			switch ev.Type {
 			case displayInitialEvent, displayAddEvent,
 				displayRemoveEvent, displayUnknownEvent:
-				m, err := a.hctl.listMonitors()
+				m, err := a.hctl.listDisplays()
 				if err != nil {
-					slog.Error("listing current monitors", "error", err)
+					slog.Error("listing current displays", "error", err)
 					continue
 				}
-				if !reflect.DeepEqual(a.currentState.monitors, m) {
-					a.currentState.monitors = m
-					slog.Debug("monitors state updated", "state", a.currentState.monitors)
+				if !reflect.DeepEqual(a.allDisplays, m) {
+					a.allDisplays = m
+					slog.Debug("displays state updated", "state", a.allDisplays)
 				}
 
 			case lidSwitchEvent:
-				a.currentState.lidState = parseLidState(ev.Details)
-				slog.Debug("lid state updated", "state", a.currentState.lidState)
+				a.lidState = parseLidState(ev.Details)
+				slog.Debug("lid state updated", "state", a.lidState)
 
 			case powerChangedEvent:
-				a.currentState.powerState = parsePowerState(ev.Details)
-				slog.Debug("power state updated", "state", a.currentState.powerState)
+				a.powerState = parsePowerState(ev.Details)
+				slog.Debug("power state updated", "state", a.powerState)
 
-			case configUpdatedEvent:
-				// Update config values
-				err := a.cfg.reload(5)
-				if err != nil {
-					slog.Error("reloading config", "error", err)
-					continue
-				}
 			case suspendCmdEvent:
 				slog.Info("suspended command received")
-				a.currentState.mode = modeSuspending
+				a.mode = modeSuspending
 
 			case wakeCmdEvent:
 				slog.Info("wake command received")
-				a.currentState.mode = modeWaking
+				a.mode = modeNormal
 			}
 
-			if !a.currentState.ready() {
+			if !a.ready() {
 				slog.Debug("not ready; awaiting initial values")
 				continue
 			}
@@ -146,12 +133,6 @@ func (a *app) listenAndHandle(ctx context.Context) error {
 
 			if err := a.runUpdater(); err != nil {
 				slog.Error("running updater", "error", err)
-			}
-
-			if a.currentState.mode == modeWaking {
-				a.currentState.mode = modeNormal
-				slog.Debug("wake done; resetting suspended monitors", "total_to_remove", len(a.currentState.suspendedMonitors))
-				a.currentState.suspendedMonitors = []monitor{}
 			}
 
 		case err := <-errc:
@@ -169,13 +150,6 @@ func (l *listener) listen(ctx context.Context, events chan<- listenerEvent) erro
 		slog.Debug("listening for hyprland events")
 		if err := l.listenHyprctl(ctx, events); err != nil {
 			errc <- fmt.Errorf("hyprland listener: %w", err)
-		}
-	}()
-
-	go func() {
-		slog.Debug("listening for config changes")
-		if err := l.listenConfigChanges(ctx, events); err != nil {
-			errc <- fmt.Errorf("config listener: %w", err)
 		}
 	}()
 
@@ -208,7 +182,7 @@ func (l *listener) listen(ctx context.Context, events chan<- listenerEvent) erro
 	}
 }
 
-// listenHyprctl listens for hyprctl events and sends an event if it is a monitor add or removal.
+// listenHyprctl listens for hyprctl events and sends an event if it is a display add or removal.
 func (l *listener) listenHyprctl(ctx context.Context, events chan<- listenerEvent) error {
 	var lastEvent listenerEvent
 	scn := bufio.NewScanner(l.hctlSocketConn)
@@ -245,69 +219,6 @@ func (l *listener) listenHyprctl(ctx context.Context, events chan<- listenerEven
 	}
 
 	return nil
-}
-
-// listenConfigChanges changes listens for changes in the config file; if a change is detected,
-// hyprlaptop performs a live reload.
-func (l *listener) listenConfigChanges(ctx context.Context, events chan<- listenerEvent) error {
-	var lastHash [32]byte
-
-	w, err := fsnotify.NewWatcher()
-	if err != nil {
-		return fmt.Errorf("creating config file watcher: %w", err)
-	}
-	slog.Debug("config watcher: fsnotify watcher created")
-
-	defer func() {
-		if err := w.Close(); err != nil {
-			slog.Error("closing config file watcher", "error", err)
-		}
-	}()
-
-	dir := filepath.Dir(l.cfgPath)
-	err = w.Add(dir)
-	if err != nil {
-		return fmt.Errorf("adding config directory to watcher: %w", err)
-	}
-	slog.Debug("config watcher: fsnotify watch list", "list", w.WatchList())
-
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-
-		case event, ok := <-w.Events:
-			if !ok {
-				return nil
-			}
-
-			if event.Has(fsnotify.Write) || event.Has(fsnotify.Rename) {
-				h, err := fileHash(l.cfgPath)
-				if err != nil {
-					continue
-				}
-
-				if h == lastHash {
-					slog.Debug("config watcher: received identical hash for file update, no changes needed")
-					continue
-				}
-
-				lastHash = h
-
-				slog.Debug("fsnotify: file modified", "file", event.Name)
-				events <- listenerEvent{
-					Type:    configUpdatedEvent,
-					Details: l.cfgPath,
-				}
-			}
-
-		case err, ok := <-w.Errors:
-			if !ok {
-				return nil
-			}
-			return fmt.Errorf("config watcher fsnotify error: %w", err)
-		}
-	}
 }
 
 func (l *listener) listenLidEvents(ctx context.Context, events chan<- listenerEvent) error {
@@ -359,7 +270,7 @@ func (l *listener) listenCommandEvents(ctx context.Context, events chan<- listen
 
 	defer func() {
 		if err := ln.Close(); err != nil {
-			slog.Error("command listener: closing hyprlaptop socket", "error", err)
+			slog.Error("command listener: closing hyprdocked socket", "error", err)
 		}
 	}()
 
@@ -409,18 +320,10 @@ func parseDisplayEvent(line string) (listenerEvent, error) {
 		Type: displayUnknownEvent,
 	}
 
-	if et, ok := monitorEvents[parts[0]]; ok {
+	if et, ok := displayEvents[parts[0]]; ok {
 		ev.Type = et
 		ev.Details = parts[1]
 	}
 
 	return *ev, nil
-}
-
-func fileHash(path string) ([32]byte, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return [32]byte{}, err
-	}
-	return sha256.Sum256(data), nil
 }

@@ -14,7 +14,7 @@
 }:
 
 buildGoApplication {
-  pname = "hyprlaptop";
+  pname = "hyprdocked";
   version = "0.2.0";
   pwd = ./.;
   src = ./.;

@@ -1,9 +1,9 @@
 [Unit]
-Description=Hyprlaptop Listener
+Description=Hyprdocked Listener
 After=graphical-session.target
 
 [Service]
-ExecStart=hyprlaptop
+ExecStart=hyprdocked
 Restart=on-failure
 RestartSec=2
 

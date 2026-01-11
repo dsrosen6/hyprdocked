@@ -68,7 +68,6 @@ func (l *lidHandler) listenForChanges(ctx context.Context) error {
 					return ctx.Err()
 				}
 			}
-		// TODO: handle
 		case <-ctx.Done():
 			return ctx.Err()
 		}

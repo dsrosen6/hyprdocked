@@ -1,5 +1,5 @@
 {
-  description = "Hyprlaptop";
+  description = "Hyprdocked";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -27,35 +27,35 @@
           ...
         }:
         let
-          cfg = config.services.hyprlaptop;
+          cfg = config.services.hyprdocked;
         in
         {
-          options.services.hyprlaptop = {
-            enable = lib.mkEnableOption "Hyprlaptop Listener";
+          options.services.hyprdocked = {
+            enable = lib.mkEnableOption "Hyprdocked Listener";
 
             package = lib.mkOption {
               type = lib.types.package;
               inherit (self.packages.${pkgs.stdenv.hostPlatform.system}) default;
-              description = "The hyprlaptop package to use";
+              description = "The hyprdocked package to use";
             };
           };
 
           config = lib.mkIf cfg.enable {
             home.packages = [ cfg.package ];
-            systemd.user.services.hyprlaptop = {
+            systemd.user.services.hyprdocked = {
               Unit = {
-                Description = "Hyprlaptop Listener";
+                Description = "Hyprdocked Listener";
                 After = [ "graphical-session.target" ];
               };
 
               Service = {
-                ExecStart = "${cfg.package}/bin/hyprlaptop listen";
+                ExecStart = "${cfg.package}/bin/hyprdocked listen";
                 Restart = "on-failure";
                 RestartSec = 2;
               };
 
               Install = {
-                WantedBy = [ "graphical-session.target" ];
+                WantedBy = [ "wayland-session@Hyprland.target" ];
               };
             };
           };
@@ -63,7 +63,7 @@
     in
     {
       homeManagerModules.default = homeManagerModule;
-      homeManagerModules.hyprlaptop = homeManagerModule;
+      homeManagerModules.hyprdocked = homeManagerModule;
     }
     // (flake-utils.lib.eachDefaultSystem (
       system:

@@ -54,6 +54,7 @@ func (c *config) reload(maxRetries int) error {
 		m = u.Monitors
 	}
 
+	c.Laptop = u.Laptop
 	c.Monitors = m
 	return nil
 }

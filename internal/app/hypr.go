@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const (
@@ -53,6 +55,20 @@ func newHyprctlClient() (*hyprClient, error) {
 	}
 
 	return &hyprClient{binaryPath: bp}, nil
+}
+
+func waitForHyprEnvs() {
+	ready := func() bool {
+		runtime := os.Getenv(runtimeEnv)
+		sig := os.Getenv(sigEnv)
+		return runtime != "" && sig != ""
+	}
+
+	for !ready() {
+		slog.Info("hyprland env not yet loaded; waiting 1s")
+		time.Sleep(1 * time.Second)
+	}
+	slog.Info("hyprland envs loaded")
 }
 
 func newHyprSocketConn() (*hyprSocketConn, error) {

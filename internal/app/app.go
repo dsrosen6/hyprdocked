@@ -62,6 +62,8 @@ func Run() error {
 }
 
 func runListener() error {
+	waitForHyprEnvs()
+
 	hyprClient, err := newHyprctlClient()
 	if err != nil {
 		return fmt.Errorf("creating hyprctl client: %w", err)

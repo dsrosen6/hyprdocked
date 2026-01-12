@@ -45,7 +45,7 @@
             systemd.user.services.hyprdocked = {
               Unit = {
                 Description = "Hyprdocked Listener";
-                After = [ "graphical-session.target" ];
+                After = [ "wayland-session@Hyprland.target" ];
               };
 
               Service = {

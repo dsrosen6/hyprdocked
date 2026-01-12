@@ -8,4 +8,4 @@ Restart=on-failure
 RestartSec=2
 
 [Install]
-WantedBy=graphical-session.target
+WantedBy=wayland-session@Hyprland.target

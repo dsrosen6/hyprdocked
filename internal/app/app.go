@@ -72,6 +72,7 @@ func runListener() error {
 	// Run an initial reload in case laptop display is already disabled. Assuming the laptop
 	// display is correctly set to initially enable in the hyprland config, this will re-enable
 	// it so hyprdocked can properly identify it.
+	slog.Info("running hyprctl reload")
 	if err := hyprClient.reload(); err != nil {
 		return fmt.Errorf("running hyprctl reload: %w", err)
 	}

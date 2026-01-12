@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
-	"time"
 
 	"github.com/godbus/dbus/v5"
 )
@@ -126,8 +125,8 @@ func (a *app) listenAndHandle(ctx context.Context) error {
 				continue
 			}
 
-			if a.updating || time.Since(a.lastUpdateEnd) < 500*time.Millisecond {
-				slog.Debug("skipping: in cooldown")
+			if a.updating {
+				slog.Debug("skipping: mid update")
 				continue
 			}
 

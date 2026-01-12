@@ -66,6 +66,27 @@ func (s *state) ready() bool {
 	return true
 }
 
+func (s *state) laptopIsEnabled() bool {
+	for _, m := range s.allDisplays {
+		if m.Name == s.laptopDisplay.Name {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (m mode) string() string {
+	switch m {
+	case modeNormal:
+		return "normal"
+	case modeSuspending:
+		return "suspending"
+	default:
+		return "unknown"
+	}
+}
+
 func displayReady(m display) bool {
 	return m.Name != ""
 }

@@ -16,17 +16,31 @@ func (a *app) runUpdater() error {
 		slog.Info("[UPDATER]suspend command received; enabling laptop display")
 		return a.hctl.enableOrUpdateDisplay(a.laptopDisplay)
 	}
-
 	s := a.getStatus()
+	lg := slog.Default().With(
+		slog.String("mode", a.mode.string()),
+		slog.String("status", s.string()),
+	)
+
 	switch s {
 	case statusDockedOpened, statusOnlyLaptopOpened, statusOnlyLaptopClosed:
-		slog.Info("[UPDATER]enabling laptop display if not already enabled", "status", s.string())
-		return a.hctl.enableOrUpdateDisplay(a.laptopDisplay)
+		switch a.laptopIsEnabled() {
+		case true:
+			lg.Debug("[UPDATER]laptop display already enabled; no action needed")
+		case false:
+			lg.Info("[UPDATER]enabling laptop display")
+			return a.hctl.enableOrUpdateDisplay(a.laptopDisplay)
+		}
 	case statusDockedClosed:
-		slog.Info("[UPDATER]disabling laptop display if not already disabled", "status", s.string())
-		return a.hctl.disableDisplay(a.laptopDisplay)
+		switch a.laptopIsEnabled() {
+		case true:
+			lg.Info("[UPDATER]disabling laptop display")
+			return a.hctl.disableDisplay(a.laptopDisplay)
+		case false:
+			lg.Debug("[UPDATER]laptop display already disabled; no action needed")
+		}
 	default:
-		slog.Info("[UPDATER]unknown status; doing nothing", "status", s.string())
+		lg.Info("[UPDATER]unknown status; doing nothing")
 	}
 
 	return nil

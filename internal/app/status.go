@@ -34,7 +34,15 @@ func (s status) string() string {
 }
 
 func getStatus(laptopDisplay display, allDisplays []display, state *state) status {
-	if displayReady(laptopDisplay) && len(allDisplays) <= 1 {
+	laptopEnabled := false
+	for _, d := range allDisplays {
+		if d.Name == laptopDisplay.Name {
+			laptopEnabled = true
+			break
+		}
+	}
+
+	if displayReady(laptopDisplay) && len(allDisplays) == 1 && laptopEnabled {
 		return laptopOnlyStatus(state.lidState)
 	}
 

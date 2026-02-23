@@ -1,5 +1,7 @@
 package app
 
+import hypr "github.com/dsrosen6/hyprland-go"
+
 // status is the combined status of the device's docked (external or just laptop),
 // power (ac or battery) and lid (closed or opened).
 type status int
@@ -33,7 +35,7 @@ func (s status) string() string {
 	}
 }
 
-func getStatus(laptopDisplay display, allDisplays []display, state *state) status {
+func getStatus(laptopDisplay hypr.Monitor, allDisplays []hypr.Monitor, state *state) status {
 	laptopEnabled := false
 	for _, d := range allDisplays {
 		if d.Name == laptopDisplay.Name {

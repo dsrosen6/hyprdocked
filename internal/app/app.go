@@ -8,20 +8,21 @@ import (
 	"strings"
 	"time"
 
+	hypr "github.com/dsrosen6/hyprland-go"
 	"github.com/godbus/dbus/v5"
 )
 
 const version = "0.2.0"
 
 type app struct {
-	hctl          *hyprClient
+	hctl          *hypr.Client
 	listener      *listener
 	updating      bool
 	lastUpdateEnd time.Time
 	*state
 }
 
-func newApp(hc *hyprClient, l *listener, s *state) *app {
+func newApp(hc *hypr.Client, l *listener, s *state) *app {
 	return &app{
 		hctl:     hc,
 		listener: l,
@@ -64,7 +65,7 @@ func Run() error {
 func runListener() error {
 	waitForHyprEnvs()
 
-	hyprClient, err := newHyprctlClient()
+	hyprClient, err := hypr.NewClient()
 	if err != nil {
 		return fmt.Errorf("creating hyprctl client: %w", err)
 	}
@@ -73,7 +74,7 @@ func runListener() error {
 	// display is correctly set to initially enable in the hyprland config, this will re-enable
 	// it so hyprdocked can properly identify it.
 	slog.Info("running hyprctl reload")
-	if err := hyprClient.reload(); err != nil {
+	if err := hyprClient.Reload(); err != nil {
 		return fmt.Errorf("running hyprctl reload: %w", err)
 	}
 

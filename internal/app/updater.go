@@ -14,7 +14,7 @@ func (a *app) runUpdater() error {
 
 	if a.mode == modeSuspending {
 		slog.Info("[UPDATER]suspend command received; enabling laptop display")
-		return a.hctl.enableOrUpdateDisplay(a.laptopDisplay)
+		return enableOrUpdateDisplay(a.hctl, a.laptopDisplay)
 	}
 	s := a.getStatus()
 	lg := slog.Default().With(
@@ -29,13 +29,13 @@ func (a *app) runUpdater() error {
 			lg.Debug("[UPDATER]laptop display already enabled; no action needed")
 		case false:
 			lg.Info("[UPDATER]enabling laptop display")
-			return a.hctl.enableOrUpdateDisplay(a.laptopDisplay)
+			return enableOrUpdateDisplay(a.hctl, a.laptopDisplay)
 		}
 	case statusDockedClosed:
 		switch a.laptopIsEnabled() {
 		case true:
 			lg.Info("[UPDATER]disabling laptop display")
-			return a.hctl.disableDisplay(a.laptopDisplay)
+			return disableMonitor(a.hctl, a.laptopDisplay)
 		case false:
 			lg.Debug("[UPDATER]laptop display already disabled; no action needed")
 		}

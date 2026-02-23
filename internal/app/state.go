@@ -8,6 +8,8 @@ import (
 	"os"
 	"slices"
 	"strings"
+
+	hypr "github.com/dsrosen6/hyprland-go"
 )
 
 type (
@@ -16,8 +18,8 @@ type (
 		lidState      lidState   // current state of laptop lid
 		powerState    powerState // current power state (battery/ac)
 		mode          mode
-		allDisplays   []display // current displays, returned by hyprctl monitors
-		laptopDisplay display
+		allDisplays   []hypr.Monitor // current displays, returned by hyprctl monitors
+		laptopDisplay hypr.Monitor
 	}
 
 	// mode is the operating mode of the app.
@@ -87,11 +89,11 @@ func (m mode) string() string {
 	}
 }
 
-func displayReady(m display) bool {
+func displayReady(m hypr.Monitor) bool {
 	return m.Name != ""
 }
 
-func getInitialState(ctx context.Context, hc *hyprClient, lh *lidHandler, ph *powerHandler) (*state, error) {
+func getInitialState(ctx context.Context, hc *hypr.Client, lh *lidHandler, ph *powerHandler) (*state, error) {
 	ls, err := lh.getCurrentState(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("getting lid status: %w", err)
@@ -102,7 +104,7 @@ func getInitialState(ctx context.Context, hc *hyprClient, lh *lidHandler, ph *po
 		return nil, fmt.Errorf("getting power status: %w", err)
 	}
 
-	am, err := hc.listDisplays()
+	am, err := hc.ListMonitors()
 	if err != nil {
 		return nil, fmt.Errorf("listing displays: %w", err)
 	}
@@ -121,9 +123,9 @@ func getInitialState(ctx context.Context, hc *hyprClient, lh *lidHandler, ph *po
 	}, nil
 }
 
-func identifyLaptopDisplay(displays []display) (display, error) {
+func identifyLaptopDisplay(monitors []hypr.Monitor) (hypr.Monitor, error) {
 	env := os.Getenv(laptopNameEnv)
-	for _, m := range displays {
+	for _, m := range monitors {
 		trimmed := trimmedDisplayName(m.Name)
 		if slices.Contains(commonLaptopDisplays, trimmed) {
 			return m, nil
@@ -132,7 +134,7 @@ func identifyLaptopDisplay(displays []display) (display, error) {
 		}
 	}
 
-	return display{}, errors.New("could not identify a laptop display")
+	return hypr.Monitor{}, errors.New("could not identify a laptop monitor")
 }
 
 func trimmedDisplayName(name string) string {

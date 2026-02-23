@@ -93,7 +93,7 @@ func (a *app) listenAndHandle(ctx context.Context) error {
 			switch ev.Type {
 			case displayInitialEvent, displayAddEvent,
 				displayRemoveEvent, displayUnknownEvent:
-				m, err := a.hctl.listDisplays()
+				m, err := a.hctl.ListMonitors()
 				if err != nil {
 					slog.Error("listing current displays", "error", err)
 					continue

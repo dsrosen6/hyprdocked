@@ -1,3 +1,5 @@
+github.com/dsrosen6/hyprland-go v0.0.0-20260223202540-69ad93f87bba h1:6KoBJW826Jq6QcUy0VVnfjUIBx9T/Ge6xunvlsQk984=
+github.com/dsrosen6/hyprland-go v0.0.0-20260223202540-69ad93f87bba/go.mod h1:Li0MCEjCXz+HIysE2ViKe4qZmj5o2CsV6shIaMv7pm8=
 github.com/godbus/dbus/v5 v5.2.2 h1:TUR3TgtSVDmjiXOgAAyaZbYmIeP3DPkld3jgKGV8mXQ=
 github.com/godbus/dbus/v5 v5.2.2/go.mod h1:3AAv2+hPq5rdnr5txxxRwiGjPXamgoIHgz9FPBfOp3c=
 golang.org/x/sys v0.27.0 h1:wBqf8DvsY9Y/2P8gAfPDEYNuS30J4lPHJxXSb/nJZ+s=

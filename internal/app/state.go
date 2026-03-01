@@ -5,19 +5,25 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
 	"slices"
 	"strings"
+
+	"github.com/dsrosen6/hyprdocked/internal/power"
 )
 
 type (
 	// state contains all of the entities that can frequently change.
 	state struct {
-		lidState      lidState   // current state of laptop lid
-		powerState    powerState // current power state (battery/ac)
+		lidState      power.LidState // current state of laptop lid
 		mode          mode
-		allDisplays   []display // current displays, returned by hyprctl monitors
+		allDisplays   []display      // current displays, returned by hyprctl monitors
 		laptopDisplay display
+	}
+
+	initialStateParams struct {
+		laptopMonitorName string
+		hyprClient        *hyprClient
+		lidHandler        *power.LidHandler
 	}
 
 	// mode is the operating mode of the app.
@@ -28,7 +34,6 @@ var commonLaptopDisplays = []string{
 	"edp1",
 }
 
-const laptopNameEnv = "LAPTOP_DISPLAY_NAME"
 const (
 	modeNormal mode = iota
 	modeSuspending
@@ -49,12 +54,8 @@ func (s *state) ready() bool {
 		notReady = append(notReady, "laptopDisplay")
 	}
 
-	if s.lidState == lidStateUnknown {
+	if s.lidState == power.LidStateUnknown {
 		notReady = append(notReady, "lid")
-	}
-
-	if s.powerState == powerStateUnknown {
-		notReady = append(notReady, "power")
 	}
 
 	if len(notReady) > 0 {
@@ -91,23 +92,18 @@ func displayReady(m display) bool {
 	return m.Name != ""
 }
 
-func getInitialState(ctx context.Context, hc *hyprClient, lh *lidHandler, ph *powerHandler) (*state, error) {
-	ls, err := lh.getCurrentState(ctx)
+func getInitialState(ctx context.Context, sp initialStateParams) (*state, error) {
+	ls, err := sp.lidHandler.GetCurrentState(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("getting lid status: %w", err)
 	}
 
-	ps, err := ph.getCurrentState(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("getting power status: %w", err)
-	}
-
-	am, err := hc.listDisplays()
+	ds, err := sp.hyprClient.listDisplays()
 	if err != nil {
 		return nil, fmt.Errorf("listing displays: %w", err)
 	}
 
-	lm, err := identifyLaptopDisplay(am)
+	lm, err := identifyLaptopDisplay(sp.laptopMonitorName, ds)
 	if err != nil {
 		return nil, fmt.Errorf("identifying laptop display: %w", err)
 	}
@@ -115,19 +111,17 @@ func getInitialState(ctx context.Context, hc *hyprClient, lh *lidHandler, ph *po
 
 	return &state{
 		lidState:      ls,
-		powerState:    ps,
-		allDisplays:   am,
+		allDisplays:   ds,
 		laptopDisplay: lm,
 	}, nil
 }
 
-func identifyLaptopDisplay(displays []display) (display, error) {
-	env := os.Getenv(laptopNameEnv)
+func identifyLaptopDisplay(cfgName string, displays []display) (display, error) {
 	for _, m := range displays {
 		trimmed := trimmedDisplayName(m.Name)
 		if slices.Contains(commonLaptopDisplays, trimmed) {
 			return m, nil
-		} else if env != "" && trimmed == env {
+		} else if cfgName != "" && trimmed == cfgName {
 			return m, nil
 		}
 	}

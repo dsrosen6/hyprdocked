@@ -2,67 +2,43 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
-	"os"
-	"strings"
 	"time"
 
+	"github.com/dsrosen6/hyprdocked/internal/power"
 	"github.com/godbus/dbus/v5"
 )
 
-const version = "0.2.0"
-
-type app struct {
-	hctl          *hyprClient
-	listener      *listener
-	updating      bool
-	lastUpdateEnd time.Time
+type App struct {
+	hctl            *hyprClient
+	listener        *listener
+	updating        bool
+	lastUpdateEnd   time.Time
+	suspendOnClosed bool
 	*state
 }
 
-func newApp(hc *hyprClient, l *listener, s *state) *app {
-	return &app{
-		hctl:     hc,
-		listener: l,
-		state:    s,
+type ListenerParams struct {
+	LaptopMonitorName string
+	SuspendOnClosed   bool
+}
+
+func newApp(hc *hyprClient, l *listener, s *state, suspendOnClosed bool) *App {
+	return &App{
+		hctl:            hc,
+		listener:        l,
+		state:           s,
+		suspendOnClosed: suspendOnClosed,
 	}
 }
 
-func Run() error {
-	if strings.ToLower(os.Getenv("DEBUG")) == "true" {
-		slog.SetLogLoggerLevel(slog.LevelDebug)
-	}
-
-	if len(os.Args) > 1 {
-		switch strings.ToLower(os.Args[1]) {
-		case "version":
-			fmt.Println(version)
-			return nil
-
-		case "suspend":
-			if err := sendSuspendCmd(); err != nil {
-				return fmt.Errorf("sending suspend command: %w", err)
-			}
-			time.Sleep(2 * time.Second) // give listener time before idle agent actually suspends
-			return nil
-
-		case "wake":
-			if err := sendWakeCmd(); err != nil {
-				return fmt.Errorf("sending wake command: %w", err)
-			}
-			return nil
-
-		default:
-			return fmt.Errorf("unknown command: %s", os.Args[1])
-		}
-	}
-
-	return runListener()
-}
-
-func runListener() error {
+func RunListener(p ListenerParams) error {
 	waitForHyprEnvs()
+	if p.LaptopMonitorName == "" {
+		return errors.New("laptop monitor name cannot be empty")
+	}
 
 	hyprClient, err := newHyprctlClient()
 	if err != nil {
@@ -105,26 +81,30 @@ func runListener() error {
 		return fmt.Errorf("creating dbus connection: %w", err)
 	}
 
-	lh := newLidHandler(dbusConn)
-	ph := newPowerHandler(dbusConn)
-	p := listenerParams{
+	lh := power.NewLidHandler(dbusConn)
+	lp := listenerParams{
 		hyprSockConn: hyprSock,
 		lidHandler:   lh,
-		powerHandler: ph,
 		dbusConn:     dbusConn,
 	}
 
-	l, err := newListener(p)
+	l, err := newListener(lp)
 	if err != nil {
 		return fmt.Errorf("creating listener: %w", err)
 	}
 
-	s, err := getInitialState(context.Background(), hyprClient, lh, ph)
+	sp := initialStateParams{
+		laptopMonitorName: p.LaptopMonitorName,
+		hyprClient:        hyprClient,
+		lidHandler:        lh,
+	}
+
+	s, err := getInitialState(context.Background(), sp)
 	if err != nil {
 		return fmt.Errorf("getting initial state: %w", err)
 	}
 
-	app := newApp(hyprClient, l, s)
+	app := newApp(hyprClient, l, s, p.SuspendOnClosed)
 	// initial updater run before starting listener
 	_ = app.runUpdater()
 

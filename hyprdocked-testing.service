@@ -3,7 +3,7 @@ Description=Hyprdocked Listener
 After=wayland-session@Hyprland.target
 
 [Service]
-ExecStart=hyprdocked listen
+ExecStart=/home/danny/go/bin/hyprdocked listen
 Restart=on-failure
 RestartSec=2
 

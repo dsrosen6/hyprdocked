@@ -1,13 +1,7 @@
 package main
 
-import (
-	"fmt"
-
-	"github.com/dsrosen6/hyprdocked/internal/app"
-)
+import "github.com/dsrosen6/hyprdocked/cmd"
 
 func main() {
-	if err := app.Run(); err != nil {
-		fmt.Println("Error:", err)
-	}
+	cmd.Execute()
 }

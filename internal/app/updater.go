@@ -2,10 +2,11 @@ package app
 
 import (
 	"log/slog"
+	"os/exec"
 	"time"
 )
 
-func (a *app) runUpdater() error {
+func (a *App) runUpdater() error {
 	a.updating = true
 	defer func() {
 		a.lastUpdateEnd = time.Now()
@@ -13,9 +14,13 @@ func (a *app) runUpdater() error {
 	}()
 
 	if a.mode == modeSuspending {
-		slog.Info("[UPDATER]suspend command received; enabling laptop display")
-		return a.hctl.enableOrUpdateDisplay(a.laptopDisplay)
+		slog.Info("[UPDATER]enabling laptop display before suspend")
+		if err := a.hctl.enableOrUpdateDisplay(a.laptopDisplay); err != nil {
+			slog.Error("issue enabling laptop display for suspend command; continuing with suspend", "error", err)
+		}
+		return systemctlSuspend()
 	}
+
 	s := a.getStatus()
 	lg := slog.Default().With(
 		slog.String("mode", a.mode.string()),
@@ -23,7 +28,7 @@ func (a *app) runUpdater() error {
 	)
 
 	switch s {
-	case statusDockedOpened, statusOnlyLaptopOpened, statusOnlyLaptopClosed:
+	case statusDockedOpened, statusOnlyLaptopOpened:
 		switch a.laptopIsEnabled() {
 		case true:
 			lg.Debug("[UPDATER]laptop display already enabled; no action needed")
@@ -31,6 +36,23 @@ func (a *app) runUpdater() error {
 			lg.Info("[UPDATER]enabling laptop display")
 			return a.hctl.enableOrUpdateDisplay(a.laptopDisplay)
 		}
+
+	case statusOnlyLaptopClosed:
+		switch a.laptopIsEnabled() {
+		case true:
+			lg.Debug("[UPDATER]laptop display already enabled; no display action needed")
+		case false:
+			lg.Info("[UPDATER]enabling laptop display")
+			if err := a.hctl.enableOrUpdateDisplay(a.laptopDisplay); err != nil {
+				lg.Error("[UPDATER]issue enabling laptop display", "error", err)
+			}
+		}
+
+		if a.suspendOnClosed {
+			lg.Info("[UPDATER]suspending machine")
+			return systemctlSuspend()
+		}
+
 	case statusDockedClosed:
 		switch a.laptopIsEnabled() {
 		case true:
@@ -44,4 +66,9 @@ func (a *app) runUpdater() error {
 	}
 
 	return nil
+}
+
+func systemctlSuspend() error {
+	cmd := exec.Command("systemctl", "suspend")
+	return cmd.Run()
 }

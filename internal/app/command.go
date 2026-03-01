@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 )
 
-func sendSuspendCmd() error {
-	return sendCmd(string(suspendCmdEvent))
+func SendIdleCmd() error {
+	return sendCmd(string(idleCmdEvent))
 }
 
-func sendWakeCmd() error {
-	return sendCmd(string(wakeCmdEvent))
+func SendResumeCmd() error {
+	return sendCmd(string(resumeCmdEvent))
 }
 
 func sendCmd(msg string) error {

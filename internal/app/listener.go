@@ -12,14 +12,14 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/dsrosen6/hyprdocked/internal/power"
 	"github.com/godbus/dbus/v5"
 )
 
 type (
 	listener struct {
 		hctlSocketConn *hyprSocketConn
-		lidHandler     *lidHandler
-		powerHandler   *powerHandler
+		lidHandler     *power.LidHandler
 	}
 
 	listenerEvent struct {
@@ -29,8 +29,7 @@ type (
 
 	listenerParams struct {
 		hyprSockConn *hyprSocketConn
-		lidHandler   *lidHandler
-		powerHandler *powerHandler
+		lidHandler   *power.LidHandler
 		dbusConn     *dbus.Conn
 	}
 
@@ -51,23 +50,22 @@ const (
 	displayRemoveEvent  eventType = "DISPLAY_REMOVED"
 	displayUnknownEvent eventType = "DISLAY_UNKNOWN_EVENT"
 	lidSwitchEvent      eventType = "LID_SWITCH"
-	powerChangedEvent   eventType = "POWER_CHANGED"
-	suspendCmdEvent     eventType = "SUSPEND_CMD"
-	wakeCmdEvent        eventType = "WAKE_CMD"
-	cmdSockName                   = "hyprdocked.sock"
+	// powerChangedEvent   eventType = "POWER_CHANGED"
+	idleCmdEvent   eventType = "IDLE_CMD"
+	resumeCmdEvent eventType = "RESUME_CMD"
+	cmdSockName              = "hyprdocked.sock"
 )
 
 func newListener(p listenerParams) (*listener, error) {
 	return &listener{
 		hctlSocketConn: p.hyprSockConn,
 		lidHandler:     p.lidHandler,
-		powerHandler:   p.powerHandler,
 	}, nil
 }
 
 // listenAndHandle starts the hyprdocked listener, which handles hyprctl display add/remove events
 // and events from the hyprdocked CLI.
-func (a *app) listenAndHandle(ctx context.Context) error {
+func (a *App) listenAndHandle(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -104,20 +102,25 @@ func (a *app) listenAndHandle(ctx context.Context) error {
 				}
 
 			case lidSwitchEvent:
-				a.lidState = parseLidState(ev.Details)
-				slog.Debug("lid state updated", "state", a.lidState)
+				ls, err := a.listener.lidHandler.GetCurrentState(ctx)
+				if err != nil {
+					slog.Error("fetching lid state", "error", err)
+					continue
+				}
 
-			case powerChangedEvent:
-				a.powerState = parsePowerState(ev.Details)
-				slog.Debug("power state updated", "state", a.powerState)
+				if a.lidState != ls {
+					a.lidState = ls
+					slog.Debug("lid state updated", "state", a.lidState)
+				}
 
-			case suspendCmdEvent:
-				slog.Info("suspended command received")
+			case idleCmdEvent:
+				slog.Info("idle command received")
 				a.mode = modeSuspending
 
-			case wakeCmdEvent:
-				slog.Info("wake command received")
+			case resumeCmdEvent:
+				slog.Info("resume command received")
 				a.mode = modeNormal
+				continue
 			}
 
 			if !a.ready() {
@@ -156,13 +159,6 @@ func (l *listener) listen(ctx context.Context, events chan<- listenerEvent) erro
 		slog.Debug("listening for lid events")
 		if err := l.listenLidEvents(ctx, events); err != nil {
 			errc <- fmt.Errorf("lid listener: %w", err)
-		}
-	}()
-
-	go func() {
-		slog.Debug("listening for power events")
-		if err := l.listenPowerEvents(ctx, events); err != nil {
-			errc <- fmt.Errorf("power listener: %w", err)
 		}
 	}()
 
@@ -222,32 +218,14 @@ func (l *listener) listenHyprctl(ctx context.Context, events chan<- listenerEven
 
 func (l *listener) listenLidEvents(ctx context.Context, events chan<- listenerEvent) error {
 	go func() {
-		if err := l.lidHandler.listenForChanges(ctx); err != nil && err != context.Canceled {
+		if err := l.lidHandler.ListenForChanges(ctx); err != nil && err != context.Canceled {
 			slog.Error("lid listener stopped", "error", err)
 		}
 	}()
 
-	for lidEvent := range l.lidHandler.events {
+	for range l.lidHandler.Events {
 		select {
-		case events <- listenerEvent{Type: lidSwitchEvent, Details: string(lidEvent.State)}:
-		case <-ctx.Done():
-			return ctx.Err()
-		}
-	}
-
-	return nil
-}
-
-func (l *listener) listenPowerEvents(ctx context.Context, events chan<- listenerEvent) error {
-	go func() {
-		if err := l.powerHandler.listenForChanges(ctx); err != nil && err != context.Canceled {
-			slog.Error("power listener stopped", "error", err)
-		}
-	}()
-
-	for powerEvent := range l.powerHandler.events {
-		select {
-		case events <- listenerEvent{Type: powerChangedEvent, Details: string(powerEvent.State)}:
+		case events <- listenerEvent{Type: lidSwitchEvent}:
 		case <-ctx.Done():
 			return ctx.Err()
 		}
@@ -296,10 +274,10 @@ func (l *listener) listenCommandEvents(ctx context.Context, events chan<- listen
 				msg := strings.TrimSpace(string(buf))
 
 				switch msg {
-				case string(wakeCmdEvent):
-					events <- listenerEvent{Type: wakeCmdEvent}
-				case string(suspendCmdEvent):
-					events <- listenerEvent{Type: suspendCmdEvent}
+				case string(resumeCmdEvent):
+					events <- listenerEvent{Type: resumeCmdEvent}
+				case string(idleCmdEvent):
+					events <- listenerEvent{Type: idleCmdEvent}
 				default:
 					slog.Warn("command listener: got unknown command", "command", msg)
 				}

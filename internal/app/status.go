@@ -1,5 +1,7 @@
 package app
 
+import "github.com/dsrosen6/hyprdocked/internal/power"
+
 // status is the combined status of the device's docked (external or just laptop),
 // power (ac or battery) and lid (closed or opened).
 type status int
@@ -12,7 +14,7 @@ const (
 	statusDockedOpened
 )
 
-func (a *app) getStatus() status {
+func (a *App) getStatus() status {
 	return getStatus(a.laptopDisplay, a.allDisplays, a.state)
 }
 
@@ -49,22 +51,22 @@ func getStatus(laptopDisplay display, allDisplays []display, state *state) statu
 	return dockedStatus(state.lidState)
 }
 
-func laptopOnlyStatus(ls lidState) status {
+func laptopOnlyStatus(ls power.LidState) status {
 	switch ls {
-	case lidStateClosed:
+	case power.LidStateClosed:
 		return statusOnlyLaptopClosed
-	case lidStateOpened:
+	case power.LidStateOpened:
 		return statusOnlyLaptopOpened
 	default:
 		return statusUnknown
 	}
 }
 
-func dockedStatus(ls lidState) status {
+func dockedStatus(ls power.LidState) status {
 	switch ls {
-	case lidStateClosed:
+	case power.LidStateClosed:
 		return statusDockedClosed
-	case lidStateOpened:
+	case power.LidStateOpened:
 		return statusDockedOpened
 	default:
 		return statusUnknown

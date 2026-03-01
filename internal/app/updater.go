@@ -13,15 +13,11 @@ func (a *App) runUpdater() error {
 		a.updating = false
 	}()
 
-	if a.mode == modeSuspending {
-		slog.Info("[UPDATER]enabling laptop display before suspend")
-		if err := a.hctl.enableOrUpdateDisplay(a.laptopDisplay); err != nil {
-			slog.Error("issue enabling laptop display for suspend command; continuing with suspend", "error", err)
-		}
-		return systemctlSuspend()
+	if a.mode == modeIdle {
+		return a.handleIdleCmd()
 	}
 
-	s := a.getStatus()
+	s := a.status()
 	lg := slog.Default().With(
 		slog.String("mode", a.mode.string()),
 		slog.String("status", s.string()),
@@ -65,6 +61,24 @@ func (a *App) runUpdater() error {
 		lg.Info("[UPDATER]unknown status; doing nothing")
 	}
 
+	return nil
+}
+
+func (a *App) handleIdleCmd() error {
+	if !a.laptopIsEnabled() {
+		slog.Info("[UPDATER/IDLE CMD]enabling laptop display")
+		if err := a.hctl.enableOrUpdateDisplay(a.laptopDisplay); err != nil {
+			slog.Error("[UPDATER/IDLE CMD]issue enabling laptop display", "error", err)
+		}
+	} else {
+		slog.Info("[UPDATER/IDLE CMD]laptop display already enabled")
+	}
+
+	if a.suspendOnIdle {
+		slog.Info("[UPDATER/IDLE CMD]suspending on idle enabled; suspending")
+		return systemctlSuspend()
+	}
+	slog.Info("[UPDATER/IDLE CMD]suspending on idle disabled; doing nothing")
 	return nil
 }
 

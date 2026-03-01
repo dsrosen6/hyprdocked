@@ -2,8 +2,8 @@ package app
 
 import "github.com/dsrosen6/hyprdocked/internal/power"
 
-// status is the combined status of the device's docked (external or just laptop),
-// power (ac or battery) and lid (closed or opened).
+// status is the combined status of the device's docked state (external or just laptop),
+// and lid (closed or opened).
 type status int
 
 const (
@@ -14,8 +14,12 @@ const (
 	statusDockedOpened
 )
 
-func (a *App) getStatus() status {
+func (a *App) status() status {
 	return getStatus(a.laptopDisplay, a.allDisplays, a.state)
+}
+
+func (a *App) statusString() string {
+	return a.status().string()
 }
 
 func (s status) string() string {
@@ -44,7 +48,7 @@ func getStatus(laptopDisplay display, allDisplays []display, state *state) statu
 		}
 	}
 
-	if displayReady(laptopDisplay) && len(allDisplays) == 1 && laptopEnabled {
+	if displayReady(laptopDisplay) && (len(allDisplays) == 0 || (len(allDisplays) == 1 && laptopEnabled)) {
 		return laptopOnlyStatus(state.lidState)
 	}
 

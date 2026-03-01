@@ -16,7 +16,7 @@ type (
 	state struct {
 		lidState      power.LidState // current state of laptop lid
 		mode          mode
-		allDisplays   []display      // current displays, returned by hyprctl monitors
+		allDisplays   []display // current displays, returned by hyprctl monitors
 		laptopDisplay display
 	}
 
@@ -36,7 +36,7 @@ var commonLaptopDisplays = []string{
 
 const (
 	modeNormal mode = iota
-	modeSuspending
+	modeIdle
 )
 
 func (s *state) ready() bool {
@@ -46,10 +46,6 @@ func (s *state) ready() bool {
 	}
 
 	var notReady []string
-	if len(s.allDisplays) == 0 {
-		notReady = append(notReady, "allDisplays")
-	}
-
 	if !displayReady(s.laptopDisplay) {
 		notReady = append(notReady, "laptopDisplay")
 	}
@@ -81,7 +77,7 @@ func (m mode) string() string {
 	switch m {
 	case modeNormal:
 		return "normal"
-	case modeSuspending:
+	case modeIdle:
 		return "suspending"
 	default:
 		return "unknown"

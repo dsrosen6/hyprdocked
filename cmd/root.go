@@ -37,11 +37,22 @@ var (
 		},
 	}
 
+	pingCmd = &cobra.Command{
+		Use: "ping",
+		Run: func(cmd *cobra.Command, args []string) {
+			err := app.SendPingCmd()
+			cobra.CheckErr(err)
+
+			fmt.Println("OK")
+		},
+	}
+
 	idleCmd = &cobra.Command{
 		Use:     "idle",
 		Aliases: []string{"i"},
 		Run: func(cmd *cobra.Command, args []string) {
-			err := app.SendIdleCmd()
+			source, _ := cmd.Flags().GetString("source")
+			err := app.SendIdleCmd(source)
 			cobra.CheckErr(err)
 		},
 	}
@@ -50,7 +61,8 @@ var (
 		Use:     "resume",
 		Aliases: []string{"r"},
 		Run: func(cmd *cobra.Command, args []string) {
-			err := app.SendResumeCmd()
+			source, _ := cmd.Flags().GetString("source")
+			err := app.SendResumeCmd(source)
 			cobra.CheckErr(err)
 		},
 	}
@@ -61,7 +73,8 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			p := app.ListenerParams{
 				LaptopMonitorName: viper.GetString("laptop"),
-				SuspendOnClosed:   viper.GetBool("suspend-on-closed"),
+				SuspendOnIdle:     viper.GetBool("suspend-idle"),
+				SuspendOnClosed:   viper.GetBool("suspend-closed"),
 			}
 
 			err := app.RunListener(p)
@@ -82,14 +95,20 @@ func init() {
 
 	rootCmd.PersistentFlags().BoolP("debug", "d", false, "enable debug logging")
 	rootCmd.PersistentFlags().StringP("laptop", "l", "eDP-1", "laptop monitor name")
-	rootCmd.PersistentFlags().BoolP("suspend-on-closed", "s", true, "suspend device on lid closed if only laptop")
+	rootCmd.PersistentFlags().Bool("suspend-idle", false, "suspend device when idle command is sent")
+	rootCmd.PersistentFlags().Bool("suspend-closed", false, "suspend device on lid closed if only laptop")
 
 	_ = viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))
 	_ = viper.BindPFlag("laptop", rootCmd.PersistentFlags().Lookup("laptop"))
-	_ = viper.BindPFlag("suspend-on-closed", rootCmd.PersistentFlags().Lookup("suspend-on-closed"))
+	_ = viper.BindPFlag("suspend-idle", rootCmd.PersistentFlags().Lookup("suspend-idle"))
+	_ = viper.BindPFlag("suspend-closed", rootCmd.PersistentFlags().Lookup("suspend-closed"))
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/hyprdocked/config.json)")
+	idleCmd.Flags().String("source", "", "source of the idle command (logged by listener)")
+	resumeCmd.Flags().String("source", "", "source of the resume command (logged by listener)")
+
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(pingCmd)
 	rootCmd.AddCommand(idleCmd)
 	rootCmd.AddCommand(resumeCmd)
 	rootCmd.AddCommand(listenCmd)

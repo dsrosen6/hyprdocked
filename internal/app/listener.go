@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/dsrosen6/hyprdocked/internal/power"
 	"github.com/godbus/dbus/v5"
@@ -25,6 +26,7 @@ type (
 	listenerEvent struct {
 		Type    eventType
 		Details string
+		Done    chan error
 	}
 
 	listenerParams struct {
@@ -36,24 +38,22 @@ type (
 	eventType string
 )
 
-// We are only actively filtering for the v2 monitor events as to not double up (since hyprland
-// sends both a "v1" (monitoradded or monitorremoved) but it's expected that v2 is deprecated and just
-// replaces the original, so this will probably change.
 var displayEvents = map[string]eventType{
-	"monitoraddedv2":   displayAddEvent,
-	"monitorremovedv2": displayRemoveEvent,
+	"monitoradded":   displayAddEvent,
+	"monitorremoved": displayRemoveEvent,
 }
 
 const (
-	displayInitialEvent eventType = "DISPLAY_INITIAL"
 	displayAddEvent     eventType = "DISPLAY_ADDED"
 	displayRemoveEvent  eventType = "DISPLAY_REMOVED"
 	displayUnknownEvent eventType = "DISLAY_UNKNOWN_EVENT"
 	lidSwitchEvent      eventType = "LID_SWITCH"
-	// powerChangedEvent   eventType = "POWER_CHANGED"
-	idleCmdEvent   eventType = "IDLE_CMD"
-	resumeCmdEvent eventType = "RESUME_CMD"
-	cmdSockName              = "hyprdocked.sock"
+	idleCmdEvent        eventType = "IDLE_CMD"
+	resumeCmdEvent      eventType = "RESUME_CMD"
+	pingCmdEvent        eventType = "PING_CMD"
+
+	cmdSockName  = "hyprdocked.sock"
+	settleWindow = time.Millisecond * 500
 )
 
 func newListener(p listenerParams) (*listener, error) {
@@ -87,54 +87,80 @@ func (a *App) listenAndHandle(ctx context.Context) error {
 				return nil // normal shutdown
 			}
 
+			// Collect done channels to signal once processing completes.
+			var doneChans []chan error
+			if ev.Done != nil {
+				doneChans = append(doneChans, ev.Done)
+			}
+
+			if a.mode == modeIdle && ev.Type != resumeCmdEvent {
+				slog.Debug("received event from listener; in idle mode, skipping processing", "type", ev.Type, "details", ev.Details)
+				continue
+			}
+
 			slog.Debug("received event from listener", "type", ev.Type, "details", ev.Details)
 			switch ev.Type {
-			case displayInitialEvent, displayAddEvent,
-				displayRemoveEvent, displayUnknownEvent:
-				m, err := a.hctl.listDisplays()
-				if err != nil {
-					slog.Error("listing current displays", "error", err)
-					continue
-				}
-				if !reflect.DeepEqual(a.allDisplays, m) {
-					a.allDisplays = m
-					slog.Debug("displays state updated", "state", a.allDisplays)
-				}
-
-			case lidSwitchEvent:
-				ls, err := a.listener.lidHandler.GetCurrentState(ctx)
-				if err != nil {
-					slog.Error("fetching lid state", "error", err)
-					continue
-				}
-
-				if a.lidState != ls {
-					a.lidState = ls
-					slog.Debug("lid state updated", "state", a.lidState)
-				}
-
-			case idleCmdEvent:
-				slog.Info("idle command received")
-				a.mode = modeSuspending
-
 			case resumeCmdEvent:
-				slog.Info("resume command received")
+				slog.Info("resume command received", "source", ev.Details)
 				a.mode = modeNormal
+			case idleCmdEvent:
+				slog.Info("idle command received", "source", ev.Details)
+				a.mode = modeIdle
+			case pingCmdEvent:
+				slog.Info("ping command received")
+				for _, done := range doneChans {
+					done <- nil
+				}
 				continue
 			}
 
+			// Wait briefly to let the system settle and coalesce any concurrently buffered
+			// events (e.g. rapid display add/remove during dock/undock).
+			settle := time.NewTimer(settleWindow)
+		drain:
+			for {
+				select {
+				case <-settle.C:
+					break drain
+				case extra, ok := <-events:
+					if !ok {
+						settle.Stop()
+						for _, done := range doneChans {
+							done <- nil
+						}
+						return nil
+					}
+					if extra.Done != nil {
+						doneChans = append(doneChans, extra.Done)
+					}
+					slog.Debug("coalescing event during settle", "type", extra.Type)
+					switch extra.Type {
+					case resumeCmdEvent:
+						a.mode = modeNormal
+					case idleCmdEvent:
+						a.mode = modeIdle
+					}
+				}
+			}
+			settle.Stop()
+
+			// Re-fetch all state from authoritative sources before deciding what to do.
+			a.refreshState(ctx)
+
+			var runErr error
 			if !a.ready() {
 				slog.Debug("not ready; awaiting initial values")
-				continue
-			}
-
-			if a.updating {
+			} else if a.updating {
 				slog.Debug("skipping: mid update")
-				continue
+			} else {
+				runErr = a.runUpdater()
+				if runErr != nil {
+					slog.Error("running updater", "error", runErr)
+				}
 			}
 
-			if err := a.runUpdater(); err != nil {
-				slog.Error("running updater", "error", err)
+			for _, done := range doneChans {
+				done <- runErr
 			}
 
 		case err := <-errc:
@@ -143,6 +169,26 @@ func (a *App) listenAndHandle(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		}
+	}
+}
+
+func (a *App) refreshState(ctx context.Context) {
+	if ds, err := a.hctl.listDisplays(); err == nil {
+		if !reflect.DeepEqual(a.allDisplays, ds) {
+			a.allDisplays = ds
+			slog.Debug("displays state refreshed", "displays", ds)
+		}
+	} else {
+		slog.Error("refreshing displays", "error", err)
+	}
+
+	if ls, err := a.listener.lidHandler.GetCurrentState(ctx); err == nil {
+		if a.lidState != ls {
+			a.lidState = ls
+			slog.Debug("lid state refreshed", "state", ls)
+		}
+	} else {
+		slog.Error("refreshing lid state", "error", err)
 	}
 }
 
@@ -265,21 +311,39 @@ func (l *listener) listenCommandEvents(ctx context.Context, events chan<- listen
 				defer func() {
 					if err := conn.Close(); err != nil {
 						slog.Error("command listener: closing socket conn", "error", err)
-					} else {
-						slog.Debug("command listener: socket conn closed")
 					}
 				}()
 
 				buf, _ := io.ReadAll(conn)
 				msg := strings.TrimSpace(string(buf))
 
-				switch msg {
+				parts := strings.SplitN(msg, " ", 2)
+				cmd := parts[0]
+				source := ""
+				if len(parts) > 1 {
+					source = parts[1]
+				}
+
+				done := make(chan error, 1)
+				var ev listenerEvent
+				switch cmd {
 				case string(resumeCmdEvent):
-					events <- listenerEvent{Type: resumeCmdEvent}
+					ev = listenerEvent{Type: resumeCmdEvent, Details: source, Done: done}
 				case string(idleCmdEvent):
-					events <- listenerEvent{Type: idleCmdEvent}
+					ev = listenerEvent{Type: idleCmdEvent, Details: source, Done: done}
+				case string(pingCmdEvent):
+					ev = listenerEvent{Type: pingCmdEvent, Done: done}
 				default:
 					slog.Warn("command listener: got unknown command", "command", msg)
+					return
+				}
+
+				events <- ev
+
+				if err := <-done; err != nil {
+					fmt.Fprintf(conn, "ERROR: %v", err)
+				} else {
+					conn.Write([]byte("OK"))
 				}
 			}()
 		}

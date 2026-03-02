@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"time"
 
 	"github.com/dsrosen6/hyprdocked/internal/power"
 	"github.com/godbus/dbus/v5"
@@ -15,7 +14,6 @@ type App struct {
 	hctl            *hyprClient
 	listener        *listener
 	updating        bool
-	lastUpdateEnd   time.Time
 	suspendOnIdle   bool
 	suspendOnClosed bool
 	*state

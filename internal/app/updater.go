@@ -3,13 +3,11 @@ package app
 import (
 	"log/slog"
 	"os/exec"
-	"time"
 )
 
 func (a *App) runUpdater() error {
 	a.updating = true
 	defer func() {
-		a.lastUpdateEnd = time.Now()
 		a.updating = false
 	}()
 

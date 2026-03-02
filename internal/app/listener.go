@@ -53,7 +53,7 @@ const (
 	pingCmdEvent        eventType = "PING_CMD"
 
 	cmdSockName  = "hyprdocked.sock"
-	settleWindow = time.Millisecond * 500
+	settleWindow = time.Millisecond * 1000
 )
 
 func newListener(p listenerParams) (*listener, error) {
@@ -133,7 +133,7 @@ func (a *App) listenAndHandle(ctx context.Context) error {
 					if extra.Done != nil {
 						doneChans = append(doneChans, extra.Done)
 					}
-					slog.Debug("coalescing event during settle", "type", extra.Type)
+					slog.Debug("coalescing event during settle", "type", extra.Type, "details", extra.Details)
 					switch extra.Type {
 					case resumeCmdEvent:
 						a.mode = modeNormal

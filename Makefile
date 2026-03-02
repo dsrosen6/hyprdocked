@@ -1,7 +1,12 @@
-copy-svc:
-	cp ./hyprdocked-testing.service ~/.config/systemd/user/
-	systemctl --user daemon-reload
+run:
+	go run main.go listen
 
-update-svc:
+enable-sctl:
 	go install
-	systemctl --user restart hyprdocked-testing.service
+	go run . service install --binary-path ~/go/bin/hyprdocked
+
+disable-sctl:
+	go run . service uninstall
+
+logs-sctl:
+	go run . service logs -f

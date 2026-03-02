@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/dsrosen6/hyprdocked/internal/app"
+	"github.com/dsrosen6/hyprdocked/internal/service"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -40,9 +41,7 @@ var (
 	pingCmd = &cobra.Command{
 		Use: "ping",
 		Run: func(cmd *cobra.Command, args []string) {
-			err := app.SendPingCmd()
-			cobra.CheckErr(err)
-
+			cobra.CheckErr(app.SendPingCmd())
 			fmt.Println("OK")
 		},
 	}
@@ -52,8 +51,7 @@ var (
 		Aliases: []string{"i"},
 		Run: func(cmd *cobra.Command, args []string) {
 			source, _ := cmd.Flags().GetString("source")
-			err := app.SendIdleCmd(source)
-			cobra.CheckErr(err)
+			cobra.CheckErr(app.SendIdleCmd(source))
 		},
 	}
 
@@ -62,8 +60,7 @@ var (
 		Aliases: []string{"r"},
 		Run: func(cmd *cobra.Command, args []string) {
 			source, _ := cmd.Flags().GetString("source")
-			err := app.SendResumeCmd(source)
-			cobra.CheckErr(err)
+			cobra.CheckErr(app.SendResumeCmd(source))
 		},
 	}
 
@@ -77,8 +74,46 @@ var (
 				SuspendOnClosed:   viper.GetBool("suspend-closed"),
 			}
 
-			err := app.RunListener(p)
-			cobra.CheckErr(err)
+			cobra.CheckErr(app.RunListener(p))
+		},
+	}
+
+	serviceCmd = &cobra.Command{
+		Use:   "service",
+		Short: "Manage the hyprdocked systemd user service",
+	}
+
+	serviceInstallCmd = &cobra.Command{
+		Use:   "install",
+		Short: "Install and start the hyprdocked systemd user service",
+		Run: func(cmd *cobra.Command, args []string) {
+			customBinary, _ := cmd.Flags().GetString("binary-path")
+			cobra.CheckErr(service.Install(customBinary))
+		},
+	}
+
+	serviceRestartCmd = &cobra.Command{
+		Use:   "restart",
+		Short: "Restart the hyprdocked systemd user service",
+		Run: func(cmd *cobra.Command, args []string) {
+			cobra.CheckErr(service.Restart())
+		},
+	}
+
+	serviceUninstallCmd = &cobra.Command{
+		Use:   "uninstall",
+		Short: "Stop, disable, and remove the hyprdocked systemd user service",
+		Run: func(cmd *cobra.Command, args []string) {
+			cobra.CheckErr(service.Uninstall())
+		},
+	}
+
+	serviceLogsCmd = &cobra.Command{
+		Use:   "logs",
+		Short: "Show logs of hyprdocked systemd user service",
+		Run: func(cmd *cobra.Command, args []string) {
+			stream, _ := cmd.Flags().GetBool("stream")
+			cobra.CheckErr(service.ShowLogs(stream))
 		},
 	}
 )
@@ -106,12 +141,19 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/hyprdocked/config.json)")
 	idleCmd.Flags().String("source", "", "source of the idle command (logged by listener)")
 	resumeCmd.Flags().String("source", "", "source of the resume command (logged by listener)")
+	serviceInstallCmd.Flags().StringP("binary-path", "b", "", "custom binary path for the systemd unit to use")
+	serviceLogsCmd.Flags().BoolP("stream", "f", false, "stream logs")
 
+	serviceCmd.AddCommand(serviceInstallCmd)
+	serviceCmd.AddCommand(serviceUninstallCmd)
+	serviceCmd.AddCommand(serviceLogsCmd)
+	serviceCmd.AddCommand(serviceRestartCmd)
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(pingCmd)
 	rootCmd.AddCommand(idleCmd)
 	rootCmd.AddCommand(resumeCmd)
 	rootCmd.AddCommand(listenCmd)
+	rootCmd.AddCommand(serviceCmd)
 }
 
 func initConfig() {

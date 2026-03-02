@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/dsrosen6/hyprdocked/internal/app"
 	"github.com/dsrosen6/hyprdocked/internal/service"
@@ -68,13 +69,9 @@ var (
 		Use:     "listen",
 		Aliases: []string{"l"},
 		Run: func(cmd *cobra.Command, args []string) {
-			p := app.ListenerParams{
-				LaptopMonitorName: viper.GetString("laptop"),
-				SuspendOnIdle:     viper.GetBool("suspend-idle"),
-				SuspendOnClosed:   viper.GetBool("suspend-closed"),
-			}
-
-			cobra.CheckErr(app.RunListener(p))
+			var c app.Config
+			cobra.CheckErr(viper.Unmarshal(&c))
+			cobra.CheckErr(app.RunListener(c))
 		},
 	}
 
@@ -116,6 +113,27 @@ var (
 			cobra.CheckErr(service.ShowLogs(stream))
 		},
 	}
+
+	checkCfgCmd = &cobra.Command{
+		Use:   "check-cfg",
+		Short: "Make sure config is valid and output values",
+		Run: func(cmd *cobra.Command, args []string) {
+			var cfg app.Config
+			cobra.CheckErr(viper.Unmarshal(&cfg))
+
+			var postHooks []string
+			for _, h := range cfg.PostUpdateHooks {
+				postHooks = append(postHooks, fmt.Sprintf("   On Status Change: %t, Command: %s", h.OnStatusChange, h.Command))
+			}
+
+			hookStr := "None"
+			if len(postHooks) > 0 {
+				hookStr = fmt.Sprintf("\n%s", strings.Join(postHooks, "\n"))
+			}
+			fmt.Printf("Debug: %v\nLaptop: %s\nSuspend On Idle: %v\nSuspend On Closed: %v\nPost Hooks: %s\n",
+				cfg.Debug, cfg.Laptop, cfg.SuspendIdle, cfg.SuspendClosed, hookStr)
+		},
+	}
 )
 
 func Execute() {
@@ -154,6 +172,7 @@ func init() {
 	rootCmd.AddCommand(resumeCmd)
 	rootCmd.AddCommand(listenCmd)
 	rootCmd.AddCommand(serviceCmd)
+	rootCmd.AddCommand(checkCfgCmd)
 }
 
 func initConfig() {
@@ -168,13 +187,15 @@ func initConfig() {
 		cfgDir := filepath.Join(home, ".config")
 
 		viper.AddConfigPath(filepath.Join(cfgDir, "hyprdocked"))
-		viper.SetConfigType("json")
-		viper.SetConfigName("hyprdocked")
+		viper.SetConfigType("yaml")
+		viper.SetConfigName("config")
 	}
 
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
-		fmt.Fprintln(os.Stderr, "ERROR reading config file:", err)
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			cobra.CheckErr(err)
+		}
 	}
 }

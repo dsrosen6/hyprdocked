@@ -19,7 +19,7 @@ type App struct {
 	*state
 }
 
-type ListenerParams struct {
+type RunParams struct {
 	LaptopMonitorName string
 	SuspendOnIdle     bool
 	SuspendOnClosed   bool
@@ -35,9 +35,9 @@ func newApp(hc *hyprClient, l *listener, s *state, suspendIdle, suspendClosed bo
 	}
 }
 
-func RunListener(p ListenerParams) error {
+func RunListener(c Config) error {
 	waitForHyprEnvs()
-	if p.LaptopMonitorName == "" {
+	if c.Laptop == "" {
 		return errors.New("laptop monitor name cannot be empty")
 	}
 
@@ -95,7 +95,7 @@ func RunListener(p ListenerParams) error {
 	}
 
 	sp := initialStateParams{
-		laptopMonitorName: p.LaptopMonitorName,
+		laptopMonitorName: c.Laptop,
 		hyprClient:        hyprClient,
 		lidHandler:        lh,
 	}
@@ -105,7 +105,7 @@ func RunListener(p ListenerParams) error {
 		return fmt.Errorf("getting initial state: %w", err)
 	}
 
-	app := newApp(hyprClient, l, s, p.SuspendOnIdle, p.SuspendOnClosed)
+	app := newApp(hyprClient, l, s, c.SuspendIdle, c.SuspendClosed)
 	slog.Info("app initialized",
 		"laptop_monitor_name", app.laptopDisplay.Name,
 		"status", app.statusString(),

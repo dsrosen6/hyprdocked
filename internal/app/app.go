@@ -11,11 +11,10 @@ import (
 )
 
 type App struct {
-	hctl            *hyprClient
-	listener        *listener
-	updating        bool
-	suspendOnIdle   bool
-	suspendOnClosed bool
+	Config   Config
+	hctl     *hyprClient
+	listener *listener
+	updating bool
 	*state
 }
 
@@ -25,13 +24,12 @@ type RunParams struct {
 	SuspendOnClosed   bool
 }
 
-func newApp(hc *hyprClient, l *listener, s *state, suspendIdle, suspendClosed bool) *App {
+func newApp(cfg Config, hc *hyprClient, l *listener, s *state) *App {
 	return &App{
-		hctl:            hc,
-		listener:        l,
-		state:           s,
-		suspendOnIdle:   suspendIdle,
-		suspendOnClosed: suspendClosed,
+		Config:   cfg,
+		hctl:     hc,
+		listener: l,
+		state:    s,
 	}
 }
 
@@ -105,12 +103,12 @@ func RunListener(c Config) error {
 		return fmt.Errorf("getting initial state: %w", err)
 	}
 
-	app := newApp(hyprClient, l, s, c.SuspendIdle, c.SuspendClosed)
+	app := newApp(c, hyprClient, l, s)
 	slog.Info("app initialized",
 		"laptop_monitor_name", app.laptopDisplay.Name,
 		"status", app.statusString(),
-		"suspend_idle", app.suspendOnIdle,
-		"suspend_closed", app.suspendOnClosed,
+		"suspend_idle", app.Config.SuspendIdle,
+		"suspend_closed", app.Config.SuspendClosed,
 	)
 
 	// initial updater run before starting listener

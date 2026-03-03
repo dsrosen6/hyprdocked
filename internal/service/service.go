@@ -101,8 +101,13 @@ func Uninstall() error {
 func ShowLogs(stream bool) error {
 	args := []string{"-u", serviceName}
 	if stream {
+		// tail logs
 		args = append(args, "-f")
+	} else {
+		// show in pager starting at end
+		args = append(args, "-e")
 	}
+
 	return journalctlUser(args...)
 }
 

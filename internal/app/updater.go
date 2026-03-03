@@ -42,7 +42,7 @@ func (a *App) runUpdater() error {
 			}
 		}
 
-		if a.suspendOnClosed {
+		if a.Config.SuspendClosed {
 			lg.Info("[UPDATER]suspending machine")
 			return systemctlSuspend()
 		}
@@ -72,7 +72,7 @@ func (a *App) handleIdleCmd() error {
 		slog.Info("[UPDATER/IDLE CMD]laptop display already enabled")
 	}
 
-	if a.suspendOnIdle {
+	if a.Config.SuspendIdle {
 		slog.Info("[UPDATER/IDLE CMD]suspending on idle enabled; suspending")
 		return systemctlSuspend()
 	}

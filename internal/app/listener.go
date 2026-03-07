@@ -53,8 +53,8 @@ const (
 	resumeCmdEvent      eventType = "RESUME_CMD"
 	pingCmdEvent        eventType = "PING_CMD"
 
-	cmdSockName  = "hyprdocked.sock"
-	settleWindow = time.Millisecond * 3000
+	cmdSockName         = "hyprdocked.sock"
+	defaultSettleWindow = 3
 )
 
 func newListener(p listenerParams) (*listener, error) {
@@ -121,7 +121,11 @@ func (a *App) listenAndHandle(ctx context.Context) error {
 
 			// Wait briefly to let the system settle and coalesce any concurrently buffered
 			// events (e.g. rapid display add/remove during dock/undock).
-			settle := time.NewTimer(settleWindow)
+			sw := a.Config.SettleWindow
+			if sw <= 0 {
+				sw = defaultSettleWindow
+			}
+			settle := time.NewTimer(time.Duration(sw) * time.Second)
 		drain:
 			for {
 				select {

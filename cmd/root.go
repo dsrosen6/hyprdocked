@@ -4,11 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/dsrosen6/hyprdocked/internal/app"
-	"github.com/dsrosen6/hyprdocked/internal/service"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -18,8 +15,6 @@ const (
 )
 
 var (
-	cfgFile string
-
 	rootCmd = &cobra.Command{
 		Use: "hyprdocked",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
@@ -52,6 +47,7 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			source, _ := cmd.Flags().GetString("source")
 			cobra.CheckErr(app.SendIdleCmd(source))
+			fmt.Println("OK")
 		},
 	}
 
@@ -61,6 +57,7 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			source, _ := cmd.Flags().GetString("source")
 			cobra.CheckErr(app.SendResumeCmd(source))
+			fmt.Println("OK")
 		},
 	}
 
@@ -73,67 +70,6 @@ var (
 			cobra.CheckErr(app.RunListener(c))
 		},
 	}
-
-	serviceCmd = &cobra.Command{
-		Use:   "service",
-		Short: "Manage the hyprdocked systemd user service",
-	}
-
-	serviceInstallCmd = &cobra.Command{
-		Use:   "install",
-		Short: "Install and start the hyprdocked systemd user service",
-		Run: func(cmd *cobra.Command, args []string) {
-			customBinary, _ := cmd.Flags().GetString("binary-path")
-			cobra.CheckErr(service.Install(customBinary))
-		},
-	}
-
-	serviceRestartCmd = &cobra.Command{
-		Use:   "restart",
-		Short: "Restart the hyprdocked systemd user service",
-		Run: func(cmd *cobra.Command, args []string) {
-			cobra.CheckErr(service.Restart())
-		},
-	}
-
-	serviceUninstallCmd = &cobra.Command{
-		Use:   "uninstall",
-		Short: "Stop, disable, and remove the hyprdocked systemd user service",
-		Run: func(cmd *cobra.Command, args []string) {
-			cobra.CheckErr(service.Uninstall())
-		},
-	}
-
-	serviceLogsCmd = &cobra.Command{
-		Use:   "logs",
-		Short: "Show logs of hyprdocked systemd user service",
-		Run: func(cmd *cobra.Command, args []string) {
-			stream, _ := cmd.Flags().GetBool("stream")
-			cobra.CheckErr(service.ShowLogs(stream))
-		},
-	}
-
-	checkCfgCmd = &cobra.Command{
-		Use:     "check-cfg",
-		Aliases: []string{"check-config"},
-		Short:   "Make sure config is valid and output values",
-		Run: func(cmd *cobra.Command, args []string) {
-			var cfg app.Config
-			cobra.CheckErr(viper.Unmarshal(&cfg))
-
-			var postHooks []string
-			for _, h := range cfg.PostUpdateHooks {
-				postHooks = append(postHooks, fmt.Sprintf("   On Status Change: %t, Command: %s", h.OnStatusChange, h.Command))
-			}
-
-			hookStr := "None"
-			if len(postHooks) > 0 {
-				hookStr = fmt.Sprintf("\n%s", strings.Join(postHooks, "\n"))
-			}
-			fmt.Printf("Debug: %v\nLaptop: %s\nSuspend On Idle: %v\nSuspend On Closed: %v\nSequential Hooks: %v\nPost Hooks: %s\n",
-				cfg.Debug, cfg.Laptop, cfg.SuspendIdle, cfg.SuspendClosed, cfg.SequentialHooks, hookStr)
-		},
-	}
 )
 
 func Execute() {
@@ -144,60 +80,26 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
-
 	rootCmd.PersistentFlags().BoolP("debug", "d", false, "enable debug logging")
 	rootCmd.PersistentFlags().StringP("laptop", "l", "eDP-1", "laptop monitor name")
 	rootCmd.PersistentFlags().Bool("suspend-idle", false, "suspend device when idle command is sent")
 	rootCmd.PersistentFlags().Bool("suspend-closed", false, "suspend device on lid closed if only laptop")
 	rootCmd.PersistentFlags().Bool("sequential-hooks", false, "run post-hooks sequentially instead of concurrently")
+	rootCmd.PersistentFlags().Int("settle-window", 3, "seconds to wait after an event before processing (default 3)")
 
 	_ = viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))
 	_ = viper.BindPFlag("laptop", rootCmd.PersistentFlags().Lookup("laptop"))
 	_ = viper.BindPFlag("suspend-idle", rootCmd.PersistentFlags().Lookup("suspend-idle"))
 	_ = viper.BindPFlag("suspend-closed", rootCmd.PersistentFlags().Lookup("suspend-closed"))
 	_ = viper.BindPFlag("sequential-hooks", rootCmd.PersistentFlags().Lookup("sequential-hooks"))
+	_ = viper.BindPFlag("settle-window", rootCmd.PersistentFlags().Lookup("settle-window"))
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/hyprdocked/config.json)")
 	idleCmd.Flags().String("source", "", "source of the idle command (logged by listener)")
 	resumeCmd.Flags().String("source", "", "source of the resume command (logged by listener)")
-	serviceInstallCmd.Flags().StringP("binary-path", "b", "", "custom binary path for the systemd unit to use")
-	serviceLogsCmd.Flags().BoolP("stream", "f", false, "stream logs")
 
-	serviceCmd.AddCommand(serviceInstallCmd)
-	serviceCmd.AddCommand(serviceUninstallCmd)
-	serviceCmd.AddCommand(serviceLogsCmd)
-	serviceCmd.AddCommand(serviceRestartCmd)
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(pingCmd)
 	rootCmd.AddCommand(idleCmd)
 	rootCmd.AddCommand(resumeCmd)
 	rootCmd.AddCommand(listenCmd)
-	rootCmd.AddCommand(serviceCmd)
-	rootCmd.AddCommand(checkCfgCmd)
-}
-
-func initConfig() {
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
-		// Find home directory.
-		home, err := os.UserHomeDir()
-		cobra.CheckErr(err)
-
-		cfgDir := filepath.Join(home, ".config")
-
-		viper.AddConfigPath(filepath.Join(cfgDir, "hypr"))
-		viper.SetConfigType("yaml")
-		viper.SetConfigName("hyprdocked")
-	}
-
-	viper.AutomaticEnv()
-
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			cobra.CheckErr(err)
-		}
-	}
 }

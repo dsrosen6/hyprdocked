@@ -15,6 +15,7 @@ type Config struct {
 	SuspendClosed   bool       `mapstructure:"suspend-closed"`
 	PostUpdateHooks []PostHook `mapstructure:"post-hooks"`
 	SequentialHooks bool       `mapstructure:"sequential-hooks"`
+	SettleWindow    int        `mapstructure:"settle-window"`
 }
 
 type PostHook struct {

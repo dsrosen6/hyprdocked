@@ -53,7 +53,7 @@ const (
 	pingCmdEvent        eventType = "PING_CMD"
 
 	cmdSockName  = "hyprdocked.sock"
-	settleWindow = time.Millisecond * 1000
+	settleWindow = time.Millisecond * 3000
 )
 
 func newListener(p listenerParams) (*listener, error) {
@@ -95,6 +95,9 @@ func (a *App) listenAndHandle(ctx context.Context) error {
 
 			if a.mode == modeIdle && ev.Type != resumeCmdEvent {
 				slog.Debug("received event from listener; in idle mode, skipping processing", "type", ev.Type, "details", ev.Details)
+				for _, done := range doneChans {
+					done <- nil
+				}
 				continue
 			}
 
@@ -147,16 +150,20 @@ func (a *App) listenAndHandle(ctx context.Context) error {
 			// Re-fetch all state from authoritative sources before deciding what to do.
 			a.refreshState(ctx)
 
-			var runErr error
+			var (
+				runErr  error
+				changed bool
+			)
 			if !a.ready() {
 				slog.Debug("not ready; awaiting initial values")
 			} else if a.updating {
 				slog.Debug("skipping: mid update")
 			} else {
-				runErr = a.runUpdater()
+				changed, runErr = a.runUpdater()
 				if runErr != nil {
 					slog.Error("running updater", "error", runErr)
 				}
+				a.runPostHooks(changed)
 			}
 
 			for _, done := range doneChans {

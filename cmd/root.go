@@ -26,7 +26,6 @@ var (
 			debug := viper.GetBool("debug")
 			if debug {
 				slog.SetLogLoggerLevel(slog.LevelDebug)
-				slog.Debug("debug logging enabled")
 			}
 		},
 	}
@@ -115,8 +114,9 @@ var (
 	}
 
 	checkCfgCmd = &cobra.Command{
-		Use:   "check-cfg",
-		Short: "Make sure config is valid and output values",
+		Use:     "check-cfg",
+		Aliases: []string{"check-config"},
+		Short:   "Make sure config is valid and output values",
 		Run: func(cmd *cobra.Command, args []string) {
 			var cfg app.Config
 			cobra.CheckErr(viper.Unmarshal(&cfg))

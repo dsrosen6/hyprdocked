@@ -112,7 +112,8 @@ func RunListener(c Config) error {
 	)
 
 	// initial updater run before starting listener
-	_ = app.runUpdater()
+	changed, _ := app.runUpdater()
+	app.runPostHooks(changed)
 
 	return app.listenAndHandle(context.Background())
 }

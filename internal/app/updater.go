@@ -5,7 +5,7 @@ import (
 	"os/exec"
 )
 
-func (a *App) runUpdater() error {
+func (a *App) runUpdater() (bool, error) {
 	a.updating = true
 	defer func() {
 		a.updating = false
@@ -28,10 +28,11 @@ func (a *App) runUpdater() error {
 			lg.Debug("[UPDATER]laptop display already enabled; no action needed")
 		case false:
 			lg.Info("[UPDATER]enabling laptop display")
-			return a.hctl.enableOrUpdateDisplay(a.laptopDisplay)
+			return true, a.hctl.enableOrUpdateDisplay(a.laptopDisplay)
 		}
 
 	case statusOnlyLaptopClosed:
+		changed := false
 		switch a.laptopIsEnabled() {
 		case true:
 			lg.Debug("[UPDATER]laptop display already enabled; no display action needed")
@@ -40,18 +41,20 @@ func (a *App) runUpdater() error {
 			if err := a.hctl.enableOrUpdateDisplay(a.laptopDisplay); err != nil {
 				lg.Error("[UPDATER]issue enabling laptop display", "error", err)
 			}
+			changed = true
 		}
 
 		if a.Config.SuspendClosed {
 			lg.Info("[UPDATER]suspending machine")
-			return systemctlSuspend()
+			return changed, systemctlSuspend()
 		}
+		return changed, nil
 
 	case statusDockedClosed:
 		switch a.laptopIsEnabled() {
 		case true:
 			lg.Info("[UPDATER]disabling laptop display")
-			return a.hctl.disableDisplay(a.laptopDisplay)
+			return true, a.hctl.disableDisplay(a.laptopDisplay)
 		case false:
 			lg.Debug("[UPDATER]laptop display already disabled; no action needed")
 		}
@@ -59,25 +62,42 @@ func (a *App) runUpdater() error {
 		lg.Info("[UPDATER]unknown status; doing nothing")
 	}
 
-	return nil
+	return false, nil
 }
 
-func (a *App) handleIdleCmd() error {
+func (a *App) handleIdleCmd() (bool, error) {
+	changed := false
 	if !a.laptopIsEnabled() {
 		slog.Info("[UPDATER/IDLE CMD]enabling laptop display")
 		if err := a.hctl.enableOrUpdateDisplay(a.laptopDisplay); err != nil {
 			slog.Error("[UPDATER/IDLE CMD]issue enabling laptop display", "error", err)
 		}
+		changed = true
 	} else {
 		slog.Info("[UPDATER/IDLE CMD]laptop display already enabled")
 	}
 
 	if a.Config.SuspendIdle {
 		slog.Info("[UPDATER/IDLE CMD]suspending on idle enabled; suspending")
-		return systemctlSuspend()
+		return changed, systemctlSuspend()
 	}
 	slog.Info("[UPDATER/IDLE CMD]suspending on idle disabled; doing nothing")
-	return nil
+	return changed, nil
+}
+
+func (a *App) runPostHooks(changed bool) {
+	for _, hook := range a.Config.PostUpdateHooks {
+		if hook.OnStatusChange && !changed {
+			continue
+		}
+		cmd := hook.Command
+		go func() {
+			slog.Debug("running post-hook", "command", cmd)
+			if err := exec.Command("sh", "-c", cmd).Run(); err != nil {
+				slog.Error("post-hook failed", "command", cmd, "error", err)
+			}
+		}()
+	}
 }
 
 func systemctlSuspend() error {

@@ -21,6 +21,7 @@ type (
 	listener struct {
 		hctlSocketConn *hyprSocketConn
 		lidHandler     *power.LidHandler
+		configCh       chan Config
 	}
 
 	listenerEvent struct {
@@ -60,6 +61,7 @@ func newListener(p listenerParams) (*listener, error) {
 	return &listener{
 		hctlSocketConn: p.hyprSockConn,
 		lidHandler:     p.lidHandler,
+		configCh:       make(chan Config, 1),
 	}, nil
 }
 
@@ -169,6 +171,9 @@ func (a *App) listenAndHandle(ctx context.Context) error {
 			for _, done := range doneChans {
 				done <- runErr
 			}
+
+		case cfg := <-a.listener.configCh:
+			a.Config = cfg
 
 		case err := <-errc:
 			return fmt.Errorf("listener failed: %w", err)
@@ -348,9 +353,9 @@ func (l *listener) listenCommandEvents(ctx context.Context, events chan<- listen
 				events <- ev
 
 				if err := <-done; err != nil {
-					fmt.Fprintf(conn, "ERROR: %v", err)
+					_, _ = fmt.Fprintf(conn, "ERROR: %v", err)
 				} else {
-					conn.Write([]byte("OK"))
+					_, _ = conn.Write([]byte("OK"))
 				}
 			}()
 		}

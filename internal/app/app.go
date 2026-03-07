@@ -5,16 +5,19 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/dsrosen6/hyprdocked/internal/power"
 	"github.com/godbus/dbus/v5"
+	"github.com/spf13/viper"
 )
 
 type App struct {
-	Config   Config
-	hctl     *hyprClient
-	listener *listener
-	updating bool
+	Config           Config
+	hctl             *hyprClient
+	listener         *listener
+	updating         bool
+	lastConfigChange time.Time
 	*state
 }
 
@@ -103,17 +106,20 @@ func RunListener(c Config) error {
 		return fmt.Errorf("getting initial state: %w", err)
 	}
 
-	app := newApp(c, hyprClient, l, s)
+	a := newApp(c, hyprClient, l, s)
 	slog.Info("app initialized",
-		"laptop_monitor_name", app.laptopDisplay.Name,
-		"status", app.statusString(),
-		"suspend_idle", app.Config.SuspendIdle,
-		"suspend_closed", app.Config.SuspendClosed,
+		"laptop_monitor_name", a.laptopDisplay.Name,
+		"status", a.statusString(),
+		"suspend_idle", a.Config.SuspendIdle,
+		"suspend_closed", a.Config.SuspendClosed,
 	)
 
 	// initial updater run before starting listener
-	changed, _ := app.runUpdater()
-	app.runPostHooks(changed)
+	changed, _ := a.runUpdater()
+	a.runPostHooks(changed)
 
-	return app.listenAndHandle(context.Background())
+	viper.OnConfigChange(a.onConfigChange)
+	viper.WatchConfig()
+
+	return a.listenAndHandle(context.Background())
 }

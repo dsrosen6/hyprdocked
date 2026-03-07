@@ -91,12 +91,19 @@ func (a *App) runPostHooks(changed bool) {
 			continue
 		}
 		cmd := hook.Command
-		go func() {
+		if a.Config.SequentialHooks {
 			slog.Debug("running post-hook", "command", cmd)
 			if err := exec.Command("sh", "-c", cmd).Run(); err != nil {
 				slog.Error("post-hook failed", "command", cmd, "error", err)
 			}
-		}()
+		} else {
+			go func() {
+				slog.Debug("running post-hook", "command", cmd)
+				if err := exec.Command("sh", "-c", cmd).Run(); err != nil {
+					slog.Error("post-hook failed", "command", cmd, "error", err)
+				}
+			}()
+		}
 	}
 }
 

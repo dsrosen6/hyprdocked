@@ -130,8 +130,8 @@ var (
 			if len(postHooks) > 0 {
 				hookStr = fmt.Sprintf("\n%s", strings.Join(postHooks, "\n"))
 			}
-			fmt.Printf("Debug: %v\nLaptop: %s\nSuspend On Idle: %v\nSuspend On Closed: %v\nPost Hooks: %s\n",
-				cfg.Debug, cfg.Laptop, cfg.SuspendIdle, cfg.SuspendClosed, hookStr)
+			fmt.Printf("Debug: %v\nLaptop: %s\nSuspend On Idle: %v\nSuspend On Closed: %v\nSequential Hooks: %v\nPost Hooks: %s\n",
+				cfg.Debug, cfg.Laptop, cfg.SuspendIdle, cfg.SuspendClosed, cfg.SequentialHooks, hookStr)
 		},
 	}
 )
@@ -150,11 +150,13 @@ func init() {
 	rootCmd.PersistentFlags().StringP("laptop", "l", "eDP-1", "laptop monitor name")
 	rootCmd.PersistentFlags().Bool("suspend-idle", false, "suspend device when idle command is sent")
 	rootCmd.PersistentFlags().Bool("suspend-closed", false, "suspend device on lid closed if only laptop")
+	rootCmd.PersistentFlags().Bool("sequential-hooks", false, "run post-hooks sequentially instead of concurrently")
 
 	_ = viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))
 	_ = viper.BindPFlag("laptop", rootCmd.PersistentFlags().Lookup("laptop"))
 	_ = viper.BindPFlag("suspend-idle", rootCmd.PersistentFlags().Lookup("suspend-idle"))
 	_ = viper.BindPFlag("suspend-closed", rootCmd.PersistentFlags().Lookup("suspend-closed"))
+	_ = viper.BindPFlag("sequential-hooks", rootCmd.PersistentFlags().Lookup("sequential-hooks"))
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/hyprdocked/config.json)")
 	idleCmd.Flags().String("source", "", "source of the idle command (logged by listener)")
@@ -186,9 +188,9 @@ func initConfig() {
 
 		cfgDir := filepath.Join(home, ".config")
 
-		viper.AddConfigPath(filepath.Join(cfgDir, "hyprdocked"))
+		viper.AddConfigPath(filepath.Join(cfgDir, "hypr"))
 		viper.SetConfigType("yaml")
-		viper.SetConfigName("config")
+		viper.SetConfigName("hyprdocked")
 	}
 
 	viper.AutomaticEnv()

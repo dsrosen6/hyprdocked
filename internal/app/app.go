@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/dsrosen6/hyprdocked/internal/hypr"
 	"github.com/dsrosen6/hyprdocked/internal/power"
 	"github.com/godbus/dbus/v5"
 	"github.com/spf13/viper"
@@ -14,7 +15,7 @@ import (
 
 type App struct {
 	Config           Config
-	hctl             *hyprClient
+	hctl             *hypr.Client
 	listener         *listener
 	updating         bool
 	lastConfigChange time.Time
@@ -27,7 +28,7 @@ type RunParams struct {
 	SuspendOnClosed   bool
 }
 
-func newApp(cfg Config, hc *hyprClient, l *listener, s *state) *App {
+func newApp(cfg Config, hc *hypr.Client, l *listener, s *state) *App {
 	return &App{
 		Config:   cfg,
 		hctl:     hc,
@@ -37,12 +38,12 @@ func newApp(cfg Config, hc *hyprClient, l *listener, s *state) *App {
 }
 
 func RunListener(c Config) error {
-	waitForHyprEnvs()
+	hypr.WaitForEnvs()
 	if c.Laptop == "" {
 		return errors.New("laptop monitor name cannot be empty")
 	}
 
-	hyprClient, err := newHyprctlClient()
+	hyprClient, err := hypr.NewClient()
 	if err != nil {
 		return fmt.Errorf("creating hyprctl client: %w", err)
 	}
@@ -51,12 +52,12 @@ func RunListener(c Config) error {
 	// display is correctly set to initially enable in the hyprland config, this will re-enable
 	// it so hyprdocked can properly identify it.
 	slog.Info("running hyprctl reload")
-	if err := hyprClient.reload(); err != nil {
+	if err := hyprClient.Reload(); err != nil {
 		return fmt.Errorf("running hyprctl reload: %w", err)
 	}
 
 	var (
-		hyprSock *hyprSocketConn
+		hyprSock *hypr.SocketConn
 		dbusConn *dbus.Conn
 	)
 
@@ -73,7 +74,7 @@ func RunListener(c Config) error {
 			}
 		}
 	}()
-	hyprSock, err = newHyprSocketConn()
+	hyprSock, err = hypr.NewSocketConn()
 	if err != nil {
 		return fmt.Errorf("creating hyprland socket connection: %w", err)
 	}

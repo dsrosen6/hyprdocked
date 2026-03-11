@@ -28,7 +28,7 @@ func (a *App) runUpdater() (bool, error) {
 			lg.Debug("[UPDATER]laptop display already enabled; no action needed")
 		case false:
 			lg.Info("[UPDATER]enabling laptop display")
-			return true, a.hctl.enableOrUpdateDisplay(a.laptopDisplay)
+			return true, a.hctl.EnableOrUpdateMonitor(a.laptopDisplay)
 		}
 
 	case statusOnlyLaptopClosed:
@@ -38,7 +38,7 @@ func (a *App) runUpdater() (bool, error) {
 			lg.Debug("[UPDATER]laptop display already enabled; no display action needed")
 		case false:
 			lg.Info("[UPDATER]enabling laptop display")
-			if err := a.hctl.enableOrUpdateDisplay(a.laptopDisplay); err != nil {
+			if err := a.hctl.EnableOrUpdateMonitor(a.laptopDisplay); err != nil {
 				lg.Error("[UPDATER]issue enabling laptop display", "error", err)
 			}
 			changed = true
@@ -54,7 +54,7 @@ func (a *App) runUpdater() (bool, error) {
 		switch a.laptopIsEnabled() {
 		case true:
 			lg.Info("[UPDATER]disabling laptop display")
-			return true, a.hctl.disableDisplay(a.laptopDisplay)
+			return true, a.hctl.DisableMonitor(a.laptopDisplay)
 		case false:
 			lg.Debug("[UPDATER]laptop display already disabled; no action needed")
 		}
@@ -69,7 +69,7 @@ func (a *App) handleIdleCmd() (bool, error) {
 	changed := false
 	if !a.laptopIsEnabled() {
 		slog.Info("[UPDATER/IDLE CMD]enabling laptop display")
-		if err := a.hctl.enableOrUpdateDisplay(a.laptopDisplay); err != nil {
+		if err := a.hctl.EnableOrUpdateMonitor(a.laptopDisplay); err != nil {
 			slog.Error("[UPDATER/IDLE CMD]issue enabling laptop display", "error", err)
 		}
 		changed = true

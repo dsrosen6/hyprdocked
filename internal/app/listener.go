@@ -13,13 +13,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dsrosen6/hyprdocked/internal/hypr"
 	"github.com/dsrosen6/hyprdocked/internal/power"
 	"github.com/godbus/dbus/v5"
 )
 
 type (
 	listener struct {
-		hctlSocketConn *hyprSocketConn
+		hctlSocketConn *hypr.SocketConn
 		lidHandler     *power.LidHandler
 		configCh       chan Config
 	}
@@ -31,7 +32,7 @@ type (
 	}
 
 	listenerParams struct {
-		hyprSockConn *hyprSocketConn
+		hyprSockConn *hypr.SocketConn
 		lidHandler   *power.LidHandler
 		dbusConn     *dbus.Conn
 	}
@@ -189,7 +190,7 @@ func (a *App) listenAndHandle(ctx context.Context) error {
 }
 
 func (a *App) refreshState(ctx context.Context) {
-	if ds, err := a.hctl.listDisplays(); err == nil {
+	if ds, err := a.hctl.ListMonitors(); err == nil {
 		if !reflect.DeepEqual(a.allDisplays, ds) {
 			a.allDisplays = ds
 			slog.Debug("displays state refreshed", "displays", ds)

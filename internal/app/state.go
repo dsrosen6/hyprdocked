@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/dsrosen6/hyprdocked/internal/hypr"
 	"github.com/dsrosen6/hyprdocked/internal/power"
 )
 
@@ -16,13 +17,13 @@ type (
 	state struct {
 		lidState      power.LidState // current state of laptop lid
 		mode          mode
-		allDisplays   []display // current displays, returned by hyprctl monitors
-		laptopDisplay display
+		allDisplays   []hypr.Monitor // current displays, returned by hyprctl monitors
+		laptopDisplay hypr.Monitor
 	}
 
 	initialStateParams struct {
 		laptopMonitorName string
-		hyprClient        *hyprClient
+		hyprClient        *hypr.Client
 		lidHandler        *power.LidHandler
 	}
 
@@ -84,7 +85,7 @@ func (m mode) string() string {
 	}
 }
 
-func displayReady(m display) bool {
+func displayReady(m hypr.Monitor) bool {
 	return m.Name != ""
 }
 
@@ -94,7 +95,7 @@ func getInitialState(ctx context.Context, sp initialStateParams) (*state, error)
 		return nil, fmt.Errorf("getting lid status: %w", err)
 	}
 
-	ds, err := sp.hyprClient.listDisplays()
+	ds, err := sp.hyprClient.ListMonitors()
 	if err != nil {
 		return nil, fmt.Errorf("listing displays: %w", err)
 	}
@@ -112,7 +113,7 @@ func getInitialState(ctx context.Context, sp initialStateParams) (*state, error)
 	}, nil
 }
 
-func identifyLaptopDisplay(cfgName string, displays []display) (display, error) {
+func identifyLaptopDisplay(cfgName string, displays []hypr.Monitor) (hypr.Monitor, error) {
 	for _, m := range displays {
 		trimmed := trimmedDisplayName(m.Name)
 		if slices.Contains(commonLaptopDisplays, trimmed) {
@@ -122,7 +123,7 @@ func identifyLaptopDisplay(cfgName string, displays []display) (display, error) 
 		}
 	}
 
-	return display{}, errors.New("could not identify a laptop display")
+	return hypr.Monitor{}, errors.New("could not identify a laptop display")
 }
 
 func trimmedDisplayName(name string) string {

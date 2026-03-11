@@ -1,6 +1,9 @@
 package app
 
-import "github.com/dsrosen6/hyprdocked/internal/power"
+import (
+	"github.com/dsrosen6/hyprdocked/internal/hypr"
+	"github.com/dsrosen6/hyprdocked/internal/power"
+)
 
 // status is the combined status of the device's docked state (external or just laptop),
 // and lid (closed or opened).
@@ -39,7 +42,7 @@ func (s status) string() string {
 	}
 }
 
-func getStatus(laptopDisplay display, allDisplays []display, state *state) status {
+func getStatus(laptopDisplay hypr.Monitor, allDisplays []hypr.Monitor, state *state) status {
 	laptopEnabled := false
 	for _, d := range allDisplays {
 		if d.Name == laptopDisplay.Name {

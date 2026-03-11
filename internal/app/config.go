@@ -8,6 +8,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+const configReloadDelay = 100 * time.Millisecond
+
 type Config struct {
 	Debug           bool       `mapstructure:"debug"`
 	Laptop          string     `mapstructure:"laptop"`
@@ -25,20 +27,20 @@ type PostHook struct {
 
 // onConfigChange handles live updates when a config file change is detected.
 func (a *App) onConfigChange(e fsnotify.Event) {
-	if time.Since(a.lastConfigChange) < 100*time.Millisecond {
-		return
-	}
-	a.lastConfigChange = time.Now()
-
-	var newCfg Config
-	if err := viper.Unmarshal(&newCfg); err != nil {
-		slog.Error("reloading config", "error", err)
-		return
+	if a.configReloadTimer != nil {
+		a.configReloadTimer.Stop()
 	}
 
-	select {
-	case a.listener.configCh <- newCfg:
-		slog.Info("config reloaded", "config", a.Config)
-	default:
-	}
+	a.configReloadTimer = time.AfterFunc(configReloadDelay, func() {
+		var newCfg Config
+		if err := viper.Unmarshal(&newCfg); err != nil {
+			slog.Error("reloading config", "error", err)
+			return
+		}
+		select {
+		case a.listener.configCh <- newCfg:
+			slog.Info("config reloaded", "config", newCfg)
+		default:
+		}
+	})
 }

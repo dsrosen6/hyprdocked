@@ -14,11 +14,11 @@ import (
 )
 
 type App struct {
-	Config           Config
-	hctl             *hypr.Client
-	listener         *listener
-	updating         bool
-	lastConfigChange time.Time
+	Config            Config
+	hctl              *hypr.Client
+	listener          *listener
+	updating          bool
+	configReloadTimer *time.Timer
 	*state
 }
 

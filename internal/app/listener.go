@@ -179,6 +179,12 @@ func (a *App) listenAndHandle(ctx context.Context) error {
 
 		case cfg := <-a.listener.configCh:
 			a.Config = cfg
+			a.applyMonitorConfigs()
+			if a.laptopIsEnabled() {
+				if err := a.hctl.EnableOrUpdateMonitor(a.laptopMonitor()); err != nil {
+					slog.Error("applying updated laptop monitor config", "error", err)
+				}
+			}
 
 		case err := <-errc:
 			return fmt.Errorf("listener failed: %w", err)

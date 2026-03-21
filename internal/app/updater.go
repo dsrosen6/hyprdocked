@@ -9,6 +9,7 @@ func (a *App) runUpdater() (bool, error) {
 	a.updating = true
 	defer func() {
 		a.updating = false
+		a.applyMonitorConfigs()
 	}()
 
 	if a.mode == modeIdle {
@@ -28,7 +29,7 @@ func (a *App) runUpdater() (bool, error) {
 			lg.Debug("[UPDATER]laptop display already enabled; no action needed")
 		case false:
 			lg.Info("[UPDATER]enabling laptop display")
-			return true, a.hctl.EnableOrUpdateMonitor(a.laptopDisplay)
+			return true, a.hctl.EnableOrUpdateMonitor(a.laptopMonitor())
 		}
 
 	case statusOnlyLaptopClosed:
@@ -38,7 +39,7 @@ func (a *App) runUpdater() (bool, error) {
 			lg.Debug("[UPDATER]laptop display already enabled; no display action needed")
 		case false:
 			lg.Info("[UPDATER]enabling laptop display")
-			if err := a.hctl.EnableOrUpdateMonitor(a.laptopDisplay); err != nil {
+			if err := a.hctl.EnableOrUpdateMonitor(a.laptopMonitor()); err != nil {
 				lg.Error("[UPDATER]issue enabling laptop display", "error", err)
 			}
 			changed = true
@@ -54,7 +55,7 @@ func (a *App) runUpdater() (bool, error) {
 		switch a.laptopIsEnabled() {
 		case true:
 			lg.Info("[UPDATER]disabling laptop display")
-			return true, a.hctl.DisableMonitor(a.laptopDisplay)
+			return true, a.hctl.DisableMonitor(a.laptopMonitor())
 		case false:
 			lg.Debug("[UPDATER]laptop display already disabled; no action needed")
 		}

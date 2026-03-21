@@ -26,11 +26,28 @@ var checkCfgCmd = &cobra.Command{
 		}
 
 		fmt.Printf("%-25s %v\n", "Debug:", cfg.Debug)
-		fmt.Printf("%-25s %s\n", "Laptop:", cfg.Laptop)
 		fmt.Printf("%-25s %v\n", "Suspend On Idle:", cfg.SuspendIdle)
 		fmt.Printf("%-25s %v\n", "Suspend On Closed:", cfg.SuspendClosed)
 		fmt.Printf("%-25s %v\n", "Sequential Hooks:", cfg.SequentialHooks)
 		fmt.Printf("%-25s %ds\n", "Settle Window:", sw)
+
+		fmt.Printf("%-25s", "Monitors:")
+		if len(cfg.Monitors) == 0 {
+			fmt.Println(" None")
+		} else {
+			fmt.Println()
+			for _, m := range cfg.Monitors {
+				fmt.Printf("  %-23s %s", "Name:", m.Name)
+				if m.Laptop {
+					fmt.Print(" (laptop)")
+				}
+				fmt.Println()
+				fmt.Printf("  %-23s %dx%d\n", "Resolution:", m.Width, m.Height)
+				fmt.Printf("  %-23s %g\n", "Refresh Rate:", m.RefreshRate)
+				fmt.Printf("  %-23s %dx%d\n", "Position:", m.X, m.Y)
+				fmt.Printf("  %-23s %g\n", "Scale:", m.Scale)
+			}
+		}
 
 		fmt.Printf("%-25s", "Post Hooks:")
 		if len(cfg.PostUpdateHooks) == 0 {
